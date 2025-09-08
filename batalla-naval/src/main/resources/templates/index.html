@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -42,6 +42,11 @@
         .game-controls {
             text-align: center;
             margin-bottom: 30px;
+        }
+
+        #gameIdDisplay {
+            margin-top: 10px;
+            font-size: 1.2em;
         }
 
         .btn {
@@ -111,6 +116,11 @@
             padding: 10px;
             border-radius: 10px;
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .tablero.disabled {
+            pointer-events: none;
+            opacity: 0.7;
         }
 
         .celda {
@@ -231,13 +241,15 @@
     <h1>⚓ Batalla Naval ⚓</h1>
 
     <div class="game-controls">
-        <button class="btn" onclick="nuevoJuego()">🆕 Nuevo Juego</button>
-        <button class="btn btn-secondary" id="shuffleBtn" onclick="shuffle()" disabled>🔀 Mezclar Barcos</button>
-        <button class="btn btn-secondary" id="confirmarBtn" onclick="confirmar()" disabled>✅ Confirmar Posiciones</button>
+        <button class="btn" id="crearBtn" onclick="crearJuego()">🆕 Crear Juego</button>
+        <button class="btn btn-secondary" id="unirBtn" onclick="unirseJuego()">🤝 Unirse a Juego</button>
+        <button class="btn" id="shuffleBtn" onclick="shuffle()" disabled>🔀 Mezclar Barcos</button>
+        <button class="btn" id="confirmarBtn" onclick="confirmar()" disabled>✅ Confirmar Posiciones</button>
+        <div id="gameIdDisplay"></div>
     </div>
 
     <div class="status" id="status">
-        Haz clic en "Nuevo Juego" para comenzar
+        Haz clic en "Crear Juego" o "Unirse a Juego" para empezar
     </div>
 
     <div class="game-area" id="gameArea" style="display: none;">
@@ -269,202 +281,222 @@
 </div>
 
 <script>
-    let juegoId = null;
-    let juegoConfirmado = false;
+    let partidaId = null;
+    let jugadorId = null;
     let juegoTerminado = false;
     let disparos = 0;
     let impactos = 0;
+    let pollingInterval = null;
 
     const API_BASE = '/juego';
 
-    async function nuevoJuego() {
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('gameArea').style.display = 'none';
+        document.getElementById('gameInfo').style.display = 'none';
+        document.getElementById('shuffleBtn').disabled = true;
+        document.getElementById('confirmarBtn').disabled = true;
+    });
+
+    async function crearJuego() {
         try {
             mostrarCargando('Creando nuevo juego...');
+            const response = await fetch(`${API_BASE}/nuevo`, { method: 'POST' });
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-            const response = await fetch(`${API_BASE}/nuevo/10`, {
-                method: 'POST'
-            });
+            const partida = await response.json();
+            partidaId = partida.partidaId;
+            jugadorId = partida.jugador1Id;
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            localStorage.setItem('partidaId', partidaId);
+            localStorage.setItem('jugadorId', jugadorId);
 
-            juegoId = await response.text();
-            juegoId = juegoId.replace(/"/g, ''); // Remover comillas si las hay
+            document.getElementById('gameIdDisplay').textContent = `ID de tu juego: ${partidaId}`;
+            document.getElementById('status').textContent = 'Juego creado. Comparte el ID para que otro jugador se una. Esperando...';
 
-            juegoConfirmado = false;
-            juegoTerminado = false;
-            disparos = 0;
-            impactos = 0;
-
-            document.getElementById('shuffleBtn').disabled = false;
-            document.getElementById('confirmarBtn').disabled = false;
-            document.getElementById('gameArea').style.display = 'block';
-            document.getElementById('gameInfo').style.display = 'flex';
-
-            actualizarEstadisticas();
-            await cargarTablero();
-
-            document.getElementById('status').innerHTML = '🎲 Mezcla los barcos y confirma las posiciones para comenzar';
+            activarControles();
+            await cargarTableros();   // ✅ cargar tableros al crear
+            pollingInterval = setInterval(verificarEstadoJuego, 3000);
 
         } catch (error) {
             console.error('Error:', error);
-            document.getElementById('status').innerHTML = '❌ Error al crear el juego. Verifica que el servidor esté funcionando.';
+            document.getElementById('status').textContent = '❌ Error al crear el juego.';
+        }
+    }
+
+    async function unirseJuego() {
+        const idIngresado = prompt('Introduce el ID de la partida:');
+        if (!idIngresado) return;
+
+        try {
+            mostrarCargando('Intentando unirse al juego...');
+            const response = await fetch(`${API_BASE}/${idIngresado}/unirse`, { method: 'POST' });
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+            jugadorId = await response.text();
+            jugadorId = jugadorId.replace(/"/g, '');
+            partidaId = idIngresado;
+
+            localStorage.setItem('partidaId', partidaId);
+            localStorage.setItem('jugadorId', jugadorId);
+
+            document.getElementById('gameIdDisplay').textContent = `Te has unido al juego: ${partidaId}`;
+            activarControles();
+            await cargarTableros();   // ✅ cargar tableros al unirse
+            pollingInterval = setInterval(verificarEstadoJuego, 3000);
+
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('status').textContent = '❌ Error al unirse. Verifica el ID.';
         }
     }
 
     async function shuffle() {
-        if (!juegoId || juegoConfirmado) return;
-
+        if (juegoTerminado) return;
         try {
             mostrarCargando('Mezclando barcos...');
-
-            const response = await fetch(`${API_BASE}/${juegoId}/shuffle`, {
-                method: 'POST'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            await cargarTablero();
-            document.getElementById('status').innerHTML = '🎲 Barcos mezclados. ¿Te gustan las posiciones?';
-
+            await fetch(`${API_BASE}/${partidaId}/shuffle?jugadorId=${jugadorId}`, { method: 'POST' });
+            await cargarTableros();
+            document.getElementById('status').textContent = '🎲 Barcos mezclados. ¿Te gustan las posiciones?';
         } catch (error) {
             console.error('Error:', error);
-            document.getElementById('status').innerHTML = '❌ Error al mezclar barcos';
+            document.getElementById('status').textContent = '❌ Error al mezclar barcos.';
         }
     }
 
     async function confirmar() {
-        if (!juegoId || juegoConfirmado) return;
-
+        if (juegoTerminado) return;
         try {
             mostrarCargando('Confirmando posiciones...');
-
-            const response = await fetch(`${API_BASE}/${juegoId}/confirmar`, {
-                method: 'POST'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            juegoConfirmado = true;
+            await fetch(`${API_BASE}/${partidaId}/confirmar?jugadorId=${jugadorId}`, { method: 'POST' });
             document.getElementById('shuffleBtn').disabled = true;
             document.getElementById('confirmarBtn').disabled = true;
-
-            inicializarTableroEnemigo();
-            document.getElementById('status').innerHTML = '⚔️ ¡Batalla comenzada! Haz clic en el tablero enemigo para atacar';
-
+            document.getElementById('status').textContent = '✅ Posiciones confirmadas. Esperando al otro jugador.';
         } catch (error) {
             console.error('Error:', error);
-            document.getElementById('status').innerHTML = '❌ Error al confirmar posiciones';
+            document.getElementById('status').textContent = '❌ Error al confirmar posiciones.';
         }
     }
 
     async function atacar(fila, col) {
-        if (!juegoId || !juegoConfirmado || juegoTerminado) return;
+        if (juegoTerminado) return;
+
+        const celda = document.querySelector(`#tableroEnemigo [data-fila="${fila}"][data-col="${col}"]`);
+        if (celda.classList.contains('disabled')) {
+            document.getElementById('status').textContent = '⚠️ Ya atacaste esa posición o no es tu turno.';
+            return;
+        }
 
         try {
             mostrarCargando('Atacando...');
-
-            const response = await fetch(`${API_BASE}/${juegoId}/atacar?fila=${fila}&col=${col}`, {
-                method: 'POST'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            const response = await fetch(`${API_BASE}/${partidaId}/atacar?atacanteId=${jugadorId}&fila=${fila}&col=${col}`, { method: 'POST' });
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
             const resultado = await response.json();
-            disparos++;
-
-            const celda = document.querySelector(`#tableroEnemigo [data-fila="${fila}"][data-col="${col}"]`);
 
             switch (resultado.resultado) {
                 case 'AGUA':
+                    disparos++;
                     celda.className = 'celda agua-atacada disabled';
                     celda.innerHTML = '💧';
-                    document.getElementById('status').innerHTML = '💧 Agua... Sigue intentando';
+                    document.getElementById('status').textContent = '💧 Agua... Sigue intentando';
                     break;
                 case 'IMPACTO':
+                    disparos++;
+                    impactos++;
                     celda.className = 'celda impacto disabled';
                     celda.innerHTML = '💥';
-                    impactos++;
-                    document.getElementById('status').innerHTML = '💥 ¡Impacto! Sigue atacando';
+                    document.getElementById('status').textContent = '💥 ¡Impacto! Sigue atacando';
                     break;
                 case 'HUNDIDO':
+                    disparos++;
+                    impactos++;
                     celda.className = 'celda hundido disabled';
                     celda.innerHTML = '💀';
-                    impactos++;
-                    document.getElementById('status').innerHTML = '💀 ¡Barco hundido! Excelente disparo';
+                    document.getElementById('status').textContent = '💀 ¡Barco hundido! Excelente disparo';
                     break;
                 case 'YA_ATACADA':
-                    document.getElementById('status').innerHTML = '⚠️ Ya atacaste esa posición';
-                    return;
+                    document.getElementById('status').textContent = '⚠️ Ya atacaste esa posición.';
+                    break;
+                case 'NO_ES_TU_TURNO':
+                    document.getElementById('status').textContent = '⏳ ¡Espera! No es tu turno.';
+                    break;
+                case 'JUEGO_TERMINADO':
+                    juegoTerminado = true;
+                    document.getElementById('status').textContent = '🏆 ¡El juego ya ha terminado!';
+                    break;
             }
 
             actualizarEstadisticas();
-            await verificarFinJuego();
+            await cargarTableros();
 
         } catch (error) {
             console.error('Error:', error);
-            document.getElementById('status').innerHTML = '❌ Error al atacar';
+            document.getElementById('status').textContent = '❌ Error al atacar.';
         }
     }
 
-    async function cargarTablero() {
-        if (!juegoId) return;
-
+    async function cargarTableros() {
+        if (!partidaId || !jugadorId) return;
         try {
-            const response = await fetch(`${API_BASE}/${juegoId}`);
+            const [miTablero, oponenteTablero] = await Promise.all([
+                fetch(`${API_BASE}/${partidaId}/tablero-propio?jugadorId=${jugadorId}`).then(res => res.json()),
+                fetch(`${API_BASE}/${partidaId}/tablero-oponente?jugadorId=${jugadorId}`).then(res => res.json())
+            ]);
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            mostrarTablero(miTablero, 'tableroJugador', true);
+            mostrarTablero(oponenteTablero, 'tableroEnemigo', false);
 
-            const tablero = await response.json();
-            mostrarTableroJugador(tablero);
+            await verificarEstadoJuego();
 
         } catch (error) {
-            console.error('Error:', error);
-            document.getElementById('status').innerHTML = '❌ Error al cargar tablero';
+            console.error('Error al cargar tableros:', error);
+            document.getElementById('status').textContent = '❌ Error al cargar tableros.';
         }
     }
 
-    function mostrarTableroJugador(tablero) {
-        const container = document.getElementById('tableroJugador');
+    function mostrarTablero(tablero, containerId, esPropio) {
+        const container = document.getElementById(containerId);
         container.innerHTML = '';
+        if (!tablero || !tablero.grilla) return;
 
         for (let fila = 0; fila < 10; fila++) {
             for (let col = 0; col < 10; col++) {
                 const celda = document.createElement('div');
-                celda.className = 'celda disabled';
-
+                celda.className = 'celda';
                 const celdaData = tablero.grilla[fila][col];
 
-                switch (celdaData.estado) {
-                    case 'AGUA':
-                        celda.className += ' agua';
-                        celda.innerHTML = '🌊';
-                        break;
-                    case 'BARCO':
-                        celda.className += ' barco';
-                        celda.innerHTML = '⬛';
-                        break;
-                    case 'AGUA_ATACADA':
-                        celda.className += ' agua-atacada';
-                        celda.innerHTML = '💧';
-                        break;
-                    case 'IMPACTO':
-                        celda.className += ' impacto';
-                        celda.innerHTML = '💥';
-                        break;
-                    case 'HUNDIDO':
-                        celda.className += ' hundido';
-                        celda.innerHTML = '💀';
-                        break;
+                if (esPropio) {
+                    switch (celdaData.estado) {
+                        case 'AGUA': celda.className += ' agua'; celda.innerHTML = '🌊'; break;
+                        case 'BARCO': celda.className += ' barco'; celda.innerHTML = '⬛'; break;
+                        case 'AGUA_ATACADA': celda.className += ' agua-atacada'; celda.innerHTML = '💧'; break;
+                        case 'IMPACTO': celda.className += ' impacto'; celda.innerHTML = '💥'; break;
+                        case 'HUNDIDO': celda.className += ' hundido'; celda.innerHTML = '💀'; break;
+                    }
+                } else {
+                    celda.setAttribute('data-fila', fila);
+                    celda.setAttribute('data-col', col);
+                    celda.onclick = () => atacar(fila, col);
+
+                    switch (celdaData.estado) {
+                        case 'AGUA':
+                        case 'BARCO':
+                            celda.className += ' enemigo';
+                            celda.innerHTML = '❓';
+                            break;
+                        case 'AGUA_ATACADA':
+                            celda.className += ' agua-atacada disabled';
+                            celda.innerHTML = '💧';
+                            break;
+                        case 'IMPACTO':
+                            celda.className += ' impacto disabled';
+                            celda.innerHTML = '💥';
+                            break;
+                        case 'HUNDIDO':
+                            celda.className += ' hundido disabled';
+                            celda.innerHTML = '💀';
+                            break;
+                    }
                 }
 
                 container.appendChild(celda);
@@ -472,51 +504,52 @@
         }
     }
 
-    function inicializarTableroEnemigo() {
-        const container = document.getElementById('tableroEnemigo');
-        container.innerHTML = '';
+    async function verificarEstadoJuego() {
+        if (juegoTerminado || !partidaId || !jugadorId) return;
+        try {
+            const response = await fetch(`${API_BASE}/${partidaId}/estado`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const estadoPartida = await response.json();
 
-        for (let fila = 0; fila < 10; fila++) {
-            for (let col = 0; col < 10; col++) {
-                const celda = document.createElement('div');
-                celda.className = 'celda enemigo';
-                celda.innerHTML = '❓';
-                celda.setAttribute('data-fila', fila);
-                celda.setAttribute('data-col', col);
-                celda.onclick = () => atacar(fila, col);
-
-                container.appendChild(celda);
+            if (estadoPartida.ganador) {
+                juegoTerminado = true;
+                clearInterval(pollingInterval);
+                document.getElementById('status').textContent =
+                    estadoPartida.ganador === jugadorId
+                        ? '🏆 ¡Felicidades! Has ganado la partida'
+                        : '😔 Has perdido. ¡Suerte la próxima vez!';
+                return;
             }
+
+            if (estadoPartida.turnoActual === jugadorId) {
+                document.getElementById('status').textContent = '🎯 ¡Es tu turno! Ataca el tablero enemigo';
+                document.getElementById('tableroEnemigo').classList.remove('disabled');  // ✅ habilitar
+            } else {
+                document.getElementById('status').textContent = '⏳ Esperando el turno del oponente...';
+                document.getElementById('tableroEnemigo').classList.add('disabled');  // ✅ deshabilitar
+            }
+        } catch (error) {
+            console.error('Error al verificar estado:', error);
         }
     }
 
-    async function verificarFinJuego() {
-        if (impactos >= 17) {
-            juegoTerminado = true;
-            document.getElementById('status').innerHTML = '🏆 ¡Felicidades! ¡Has ganado la batalla naval!';
+    function mostrarCargando(mensaje) {
+        document.getElementById('status').innerHTML = `<div class="loading"></div>${mensaje}`;
+    }
 
-            const celdasEnemigo = document.querySelectorAll('#tableroEnemigo .celda');
-            celdasEnemigo.forEach(celda => {
-                celda.classList.add('disabled');
-                celda.onclick = null;
-            });
-        }
+    function activarControles() {
+        document.getElementById('gameArea').style.display = 'flex';
+        document.getElementById('gameInfo').style.display = 'flex';
+        document.getElementById('shuffleBtn').disabled = false;
+        document.getElementById('confirmarBtn').disabled = false;
     }
 
     function actualizarEstadisticas() {
         document.getElementById('disparos').textContent = disparos;
         document.getElementById('impactos').textContent = impactos;
-        const precision = disparos > 0 ? Math.round((impactos / disparos) * 100) : 0;
-        document.getElementById('precision').textContent = precision + '%';
+        document.getElementById('precision').textContent =
+            disparos > 0 ? ((impactos / disparos) * 100).toFixed(1) + '%' : '0%';
     }
-
-    function mostrarCargando(mensaje) {
-        document.getElementById('status').innerHTML = `<span class="loading"></span>${mensaje}`;
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('Batalla Naval cargada');
-    });
 </script>
 </body>
 </html>
