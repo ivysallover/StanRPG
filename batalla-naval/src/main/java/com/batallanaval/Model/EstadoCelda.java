@@ -8,7 +8,5 @@ public enum EstadoCelda {
     HUNDIDO         // Celda de un barco que ha sido hundido completamente
 }
 
-// ===== Celda.java =====
-// Ubicación: src/main/java/com/batallanaval/model/Celda.java
 
 
