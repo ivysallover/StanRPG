@@ -96,6 +96,7 @@ public class JuegoController {
 
     // ℹ️ Endpoint para obtener el estado actual de la partida.
     // Esto se usa para el "polling" del frontend.
+    // ✅ CORRECCIÓN: Este método ahora retorna un mensaje y la partida completa.
     @GetMapping("/{codigo}")
     public ResponseEntity<?> getEstado(@PathVariable String codigo, @RequestParam UUID jugadorId) {
         try {
@@ -103,12 +104,25 @@ public class JuegoController {
             if (partida == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Partida no encontrada.");
             }
-            boolean esTurno = partida.getTurnoActual() != null && partida.getTurnoActual().equals(jugadorId);
+
+            String mensaje;
+            if (partida.isJuegoTerminado()) {
+                if (partida.getGanador().equals(jugadorId.toString())) {
+                    mensaje = "🏆 ¡Ganaste!";
+                } else {
+                    mensaje = "😢 ¡Perdiste!";
+                }
+            } else if (partida.getJugador2Id() == null) {
+                mensaje = "Juego creado. Esperando al segundo jugador...";
+            } else if (partida.esTurnoDe(jugadorId)) {
+                mensaje = "¡Es tu turno! Elige una celda para atacar.";
+            } else {
+                mensaje = "Esperando el turno del oponente...";
+            }
 
             Map<String, Object> estado = Map.of(
-                    "juegoTerminado", partida.isJuegoTerminado(),
-                    "ganador", partida.getGanador(),
-                    "esTuTurno", esTurno
+                    "partida", partida,
+                    "mensaje", mensaje
             );
             return ResponseEntity.ok(estado);
         } catch (Exception e) {

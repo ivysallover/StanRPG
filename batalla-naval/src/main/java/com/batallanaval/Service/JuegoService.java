@@ -51,7 +51,6 @@ public class JuegoService {
     public void confirmar(String codigo, UUID jugadorId) {
         Partida partida = partidas.get(codigo);
         if (partida == null) throw new IllegalArgumentException("Partida no encontrada.");
-        // Lógica de confirmación de barcos
     }
 
     public void shuffle(String codigo, UUID jugadorId) {
@@ -61,37 +60,32 @@ public class JuegoService {
         if (tablero != null) tablero.shuffle();
     }
 
-    // ✅ CORRECCIÓN: Este método ahora retorna un Map con el resultado y el objeto Partida.
-    public Map<String, Object> atacar(String codigo, UUID jugadorId, int fila, int col) {
+    public ResultadoAtaque atacar(String codigo, UUID jugadorId, int fila, int col) {
         Partida partida = getPartida(codigo);
-        if (partida == null) throw new IllegalArgumentException("Partida no encontrada.");
-
-        // Validaciones previas al ataque
-        if (partida.isJuegoTerminado()) {
-            return Map.of("resultado", ResultadoAtaque.Gameover, "partida", partida);
+        if (partida == null) {
+            throw new IllegalArgumentException("Partida no encontrada.");
         }
+
         if (!partida.esTurnoDe(jugadorId)) {
-            return Map.of("resultado", ResultadoAtaque.NO_ES_TU_TURNO, "partida", partida);
+            return ResultadoAtaque.NO_ES_TU_TURNO;
         }
 
         Tablero oponenteTablero = partida.getTableroOponente(jugadorId);
         if (oponenteTablero == null) {
-            return Map.of("resultado", ResultadoAtaque.ERROR_TABLERO, "partida", partida);
+            return ResultadoAtaque.ERROR_TABLERO;
         }
 
-        ResultadoAtaque resultado = oponenteTablero.disparar(fila, col);
+        ResultadoAtaque resultado = ResultadoAtaque.valueOf(oponenteTablero.disparar(fila, col));
 
-        // ✅ Lógica de cambio de turno: solo cambia si el ataque no fue una celda ya disparada
         if (resultado != ResultadoAtaque.YA_ATACADA) {
             partida.cambiarTurno();
         }
 
-        // Lógica para determinar si el juego ha terminado
         if (oponenteTablero.todosLasBarcosHundidos()) {
             partida.setJuegoTerminado(true);
             partida.setGanador(jugadorId.toString());
         }
 
-        return Map.of("resultado", resultado, "partida", partida);
+        return resultado;
     }
 }

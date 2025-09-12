@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>⚓ Batalla Naval Épica ⚓</title>
 
+    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 
     <style>
@@ -172,6 +173,7 @@
             document.getElementById('status').textContent='Juego creado. Esperando otro jugador...';
             activarControles();
             await cargarTableros();
+            if (pollingInterval) clearInterval(pollingInterval);
             pollingInterval=setInterval(verificarEstadoJuego,3000);
         }catch(e){console.error(e); document.getElementById('status').textContent='❌ Error al crear el juego.';}
     }
@@ -190,6 +192,7 @@
             document.getElementById('gameIdDisplay').textContent=`Te has unido al juego: ${partidaId}`;
             activarControles();
             await cargarTableros();
+            if (pollingInterval) clearInterval(pollingInterval);
             pollingInterval=setInterval(verificarEstadoJuego,3000);
         }catch(e){console.error(e); document.getElementById('status').textContent='❌ Error al unirse. Verifica el ID.';}
     }
@@ -217,42 +220,45 @@
 
     async function atacar(fila,col){
         if(juegoTerminado) return;
-        const celda=document.querySelector(`#tableroEnemigo [data-fila="${fila}"][data-col="${col}"]`);
 
-        // CORRECCIÓN CLAVE: Envía el ataque y usa la respuesta del servidor para actualizar la UI
         try{
             mostrarCargando('Atacando...');
             const response = await fetch(`${API_BASE}/${partidaId}/atacar?jugadorId=${jugadorId}&fila=${fila}&col=${col}`,{method:'POST'});
             if(!response.ok) {
-                // Si hay un error, el backend ya no devolverá una Partida.
-                // Revertimos a la lógica de error
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            // Aquí es donde el backend debe devolver el ResultadoAtaque (AGUA, IMPACTO, etc.)
-            // A diferencia de la última vez, pediremos el JSON del resultado directo.
-            const resultado = await response.json();
+            const data = await response.json();
+            const resultado = data.resultado;
 
-            // Actualiza los tableros después de cada ataque para reflejar el resultado
-            await cargarTableros();
-
-            // Actualiza el mensaje de turno y las celdas
-            if (resultado.partida.turnoActual === jugadorId) {
-                document.getElementById('status').textContent = "¡Es tu turno! Elige una celda para atacar.";
-            } else {
-                document.getElementById('status').textContent = "Esperando el turno del oponente...";
-            }
-
-            // Actualiza la celda y las estadísticas con el resultado del ataque
-            switch(resultado.resultado){
-                case'AGUA': disparos++; celda.className='celda agua-atacada disabled'; celda.innerHTML='💧'; document.getElementById('status').textContent = "💧 Agua..."; break;
-                case'IMPACTO': disparos++; impactos++; celda.className='celda impacto disabled'; celda.innerHTML='💥'; document.getElementById('status').textContent = "💥 ¡Impacto!"; break;
-                case'HUNDIDO': disparos++; impactos++; celda.className='celda hundido disabled'; celda.innerHTML='💀'; document.getElementById('status').textContent = "💀 ¡Barco hundido!"; break;
+            switch(resultado){
+                case 'AGUA':
+                    document.getElementById('status').textContent = "💧 ¡Fuego! casi... pero solo agua.";
+                    disparos++;
+                    break;
+                case 'IMPACTO':
+                    document.getElementById('status').textContent = "💥 ¡Fuego! ¡Impacto!";
+                    disparos++;
+                    impactos++;
+                    break;
+                case 'HUNDIDO':
+                    document.getElementById('status').textContent = "💀 ¡Fuego! ¡Barco hundido!";
+                    disparos++;
+                    impactos++;
+                    break;
+                case 'YA_ATACADA':
+                    document.getElementById('status').textContent = "⚠️ Ya atacaste esa posición. ¡Elige otra!";
+                    break;
+                case 'NO_ES_TU_TURNO':
+                    document.getElementById('status').textContent = "❌ No es tu turno. Espera al oponente.";
+                    break;
                 default:
-                    document.getElementById('status').textContent = "¡Es tu turno! Elige una celda para atacar.";
+                    document.getElementById('status').textContent = "Esperando el turno del oponente...";
                     break;
             }
 
+            // ATENCIÓN: Se eliminó la llamada a `cargarTableros()` de aquí.
+            // Los tableros solo se actualizan con el polling, evitando conflictos.
             actualizarEstadisticas();
         } catch(e) {
             console.error(e);
@@ -266,6 +272,7 @@
             const response=await fetch(`${API_BASE}/${partidaId}/tablero?jugadorId=${jugadorId}`);
             if(!response.ok)throw new Error(`HTTP error! status: ${response.status}`);
             const data=await response.json();
+
             mostrarTablero('tableroJugador',data.jugador,false);
             mostrarTablero('tableroEnemigo',data.enemigo,true);
             document.getElementById('gameArea').style.display='flex';
@@ -322,20 +329,18 @@
     async function verificarEstadoJuego(){
         if(!partidaId || !jugadorId) return;
         try{
-            await cargarTableros();
             const response=await fetch(`${API_BASE}/${partidaId}?jugadorId=${jugadorId}`);
             if(!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data=await response.json();
 
-            if (data.esTuTurno) {
-                document.getElementById('status').textContent = "¡Es tu turno! Elige una celda para atacar.";
-            } else {
-                document.getElementById('status').textContent = "Esperando el turno del oponente...";
-            }
+            // ✅ CORRECCIÓN FINAL: Llamamos a la función principal que actualiza ambos tableros
+            await cargarTableros();
 
-            if(data.juegoTerminado){
+            // Actualiza el mensaje del juego con la información del servidor.
+            document.getElementById('status').textContent = data.mensaje;
+
+            if(data.partida.juegoTerminado){
                 juegoTerminado=true;
-                document.getElementById('status').textContent=data.ganador===jugadorId?'🏆 ¡Ganaste!':'😢 ¡Perdiste!';
                 clearInterval(pollingInterval);
             }
         }catch(e){console.error(e);}
