@@ -4,65 +4,115 @@ import com.batallanaval.Model.Partida;
 import com.batallanaval.Model.ResultadoAtaque;
 import com.batallanaval.Model.Tablero;
 import com.batallanaval.Service.JuegoService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/juego")
 @CrossOrigin(origins = "*")
 public class JuegoController {
-    private final JuegoService juegoService;
 
-    public JuegoController(JuegoService juegoService) {
-        this.juegoService = juegoService;
-    }
+    @Autowired
+    private JuegoService juegoService;
 
+    // Crear nueva partida con un código elegido.
+    // Retorna la partida completa para que el frontend obtenga el jugador1Id y el codigo.
     @PostMapping("/nuevo")
-    public Partida crearPartida() {
-        return juegoService.crearNuevaPartida();
+    public Partida crearNuevaPartida(@RequestParam String codigo) {
+        return juegoService.crearNuevaPartida(codigo);
     }
 
-    @PostMapping("/{partidaId}/unirse")
-    public String unirseAPartida(@PathVariable UUID partidaId) {
-        Partida partida = juegoService.getPartida(partidaId);
-        if (partida != null && partida.getJugador2Id() == null) {
-            UUID nuevoJugador2 = UUID.randomUUID();
-            partida.setJugador2Id(nuevoJugador2);
-            return nuevoJugador2.toString();
+    // Unirse a una partida existente.
+    // Retorna solo el UUID del segundo jugador como texto plano.
+    @PostMapping("/{codigo}/unirse")
+    public ResponseEntity<String> unirsePartida(@PathVariable String codigo) {
+        try {
+            UUID jugador2Id = juegoService.agregarSegundoJugador(codigo);
+            return ResponseEntity.ok(jugador2Id.toString());
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
-        return "ERROR_NO_PUEDE_UNIRSE";
     }
 
-    @PostMapping("/{partidaId}/atacar")
-    public ResultadoAtaque atacar(@PathVariable UUID partidaId,
-                                  @RequestParam UUID atacanteId,
-                                  @RequestParam int fila,
-                                  @RequestParam int col) {
-        return juegoService.atacar(partidaId, atacanteId, fila, col);
+    // Atacar en la partida.
+    @PostMapping("/{codigo}/atacar")
+    public Map<String, Object> atacar(
+            @PathVariable String codigo,
+            @RequestParam UUID jugadorId,
+            @RequestParam int fila,
+            @RequestParam int col) {
+        ResultadoAtaque resultado = juegoService.atacar(codigo, jugadorId, fila, col);
+        Partida partida = juegoService.getPartida(codigo);
+        return Map.of("resultado", resultado, "partida", partida);
     }
 
-    @PostMapping("/{partidaId}/shuffle")
-    public void shuffle(@PathVariable UUID partidaId, @RequestParam UUID jugadorId) {
-        juegoService.shuffle(partidaId, jugadorId);
+    // 🎯 Endpoint unificado para obtener ambos tableros del juego.
+    // Esto evita múltiples llamadas al backend y simplifica la lógica del frontend.
+    @GetMapping("/{codigo}/tablero")
+    public ResponseEntity<?> getTableros(@PathVariable String codigo, @RequestParam UUID jugadorId) {
+        try {
+            Tablero tableroPropio = juegoService.getTableroPropio(codigo, jugadorId);
+            Tablero tableroOponente = juegoService.getTableroOponente(codigo, jugadorId);
+
+            Map<String, Tablero> tableros = Map.of(
+                    "jugador", tableroPropio,
+                    "enemigo", tableroOponente
+            );
+            return ResponseEntity.ok(tableros);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
     }
 
-    @PostMapping("/{partidaId}/confirmar")
-    public void confirmar(@PathVariable UUID partidaId, @RequestParam UUID jugadorId) {
-        juegoService.confirmar(partidaId, jugadorId);
+    // ⚔️ Endpoint para confirmar el posicionamiento de los barcos.
+    @PostMapping("/{codigo}/confirmar")
+    public ResponseEntity<Void> confirmar(
+            @PathVariable String codigo,
+            @RequestParam UUID jugadorId) {
+        try {
+            juegoService.confirmar(codigo, jugadorId);
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
     }
 
-    @GetMapping("/{partidaId}/tablero-propio")
-    public Tablero getTableroPropio(@PathVariable UUID partidaId, @RequestParam UUID jugadorId) {
-        return juegoService.getTableroPropio(partidaId, jugadorId);
+    // 🔀 Endpoint para reordenar los barcos en el tablero.
+    @PostMapping("/{codigo}/shuffle")
+    public ResponseEntity<Void> shuffle(
+            @PathVariable String codigo,
+            @RequestParam UUID jugadorId) {
+        try {
+            juegoService.shuffle(codigo, jugadorId);
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
     }
 
-    @GetMapping("/{partidaId}/tablero-oponente")
-    public Tablero getTableroOponente(@PathVariable UUID partidaId, @RequestParam UUID jugadorId) {
-        return juegoService.getTableroOponente(partidaId, jugadorId);
-    }
+    // ℹ️ Endpoint para obtener el estado actual de la partida.
+    // Esto se usa para el "polling" del frontend.
+    @GetMapping("/{codigo}")
+    public ResponseEntity<?> getEstado(@PathVariable String codigo, @RequestParam UUID jugadorId) {
+        try {
+            Partida partida = juegoService.getPartida(codigo);
+            if (partida == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Partida no encontrada.");
+            }
+            boolean esTurno = partida.getTurnoActual() != null && partida.getTurnoActual().equals(jugadorId);
 
-    @GetMapping("/{partidaId}/estado")
-    public Partida getEstadoPartida(@PathVariable UUID partidaId) {
-        return juegoService.getPartida(partidaId);
+            Map<String, Object> estado = Map.of(
+                    "juegoTerminado", partida.isJuegoTerminado(),
+                    "ganador", partida.getGanador(),
+                    "esTuTurno", esTurno
+            );
+            return ResponseEntity.ok(estado);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al obtener estado.");
+        }
     }
 }

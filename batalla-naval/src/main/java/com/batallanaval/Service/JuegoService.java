@@ -11,95 +11,87 @@ import java.util.UUID;
 
 @Service
 public class JuegoService {
-    private final Map<UUID, Partida> partidas = new HashMap<>();
 
-    public Partida crearNuevaPartida() {
-        UUID partidaId = UUID.randomUUID();
-        Partida nuevaPartida = new Partida(partidaId);
-        partidas.put(partidaId, nuevaPartida);
-        return nuevaPartida;
+    private final Map<String, Partida> partidas = new HashMap<>();
+
+    public Partida crearNuevaPartida(String codigo) {
+        if (partidas.containsKey(codigo)) {
+            throw new IllegalArgumentException("El código de partida ya existe.");
+        }
+        Partida partida = new Partida(codigo);
+        partidas.put(codigo, partida);
+        return partida;
     }
 
-    public Partida getPartida(UUID partidaId) {
-        return partidas.get(partidaId);
+    public Partida getPartida(String codigo) {
+        return partidas.get(codigo);
     }
 
-    public ResultadoAtaque atacar(UUID partidaId, UUID atacanteId, int fila, int col) {
-        Partida partida = partidas.get(partidaId);
-
-        if (partida == null) {
-            return new ResultadoAtaque("PARTIDA_NO_ENCONTRADA");
-        }
-
-        if (partida.isJuegoTerminado()) {
-            return new ResultadoAtaque("JUEGO_TERMINADO");
-        }
-
-        if (!partida.esTurnoDe(atacanteId)) {
-            return new ResultadoAtaque("NO_ES_TU_TURNO");
-        }
-
-        Tablero tableroOponente = partida.getTableroOponente(atacanteId);
-        if (tableroOponente == null) {
-            return new ResultadoAtaque("OPONENTE_NO_EXISTE");
-        }
-
-        String resultado = tableroOponente.disparar(fila, col);
-
-        // Solo cambia el turno si el ataque fue válido
-        if (!resultado.equals("YA_ATACADA") && !resultado.equals("FUERA_DE_RANGO")) {
-            // Verificar si el juego ha terminado
-            if (tableroOponente.todosLasBarcosHundidos()) {
-                partida.setJuegoTerminado(true);
-                partida.setGanador(atacanteId.toString());
-            } else {
-                partida.cambiarTurno();
-            }
-        }
-
-        return new ResultadoAtaque(resultado);
+    public UUID agregarSegundoJugador(String codigo) {
+        Partida partida = partidas.get(codigo);
+        if (partida == null) throw new IllegalArgumentException("Partida no encontrada.");
+        if (partida.getJugador2Id() != null) throw new IllegalStateException("La partida ya tiene dos jugadores.");
+        UUID jugador2Id = UUID.randomUUID();
+        partida.setJugador2Id(jugador2Id);
+        return jugador2Id;
     }
 
-    public void shuffle(UUID partidaId, UUID jugadorId) {
-        Partida partida = partidas.get(partidaId);
-        if (partida != null) {
-            Tablero tablero = partida.getTablero(jugadorId);
-            if (tablero != null) {
-                tablero.shuffle();
-            }
-        }
-    }
-
-    public void confirmar(UUID partidaId, UUID jugadorId) {
-        Partida partida = partidas.get(partidaId);
-        if (partida != null) {
-            Tablero tablero = partida.getTablero(jugadorId);
-            if (tablero != null) {
-                tablero.setConfirmado(true);
-            }
-
-            // 👇 Solo empieza el juego cuando AMBOS jugadores confirmaron
-            Tablero t1 = partida.getTablero(partida.getJugador1Id());
-            Tablero t2 = partida.getTablero(partida.getJugador2Id());
-
-            if (t1 != null && t2 != null && t1.isConfirmado() && t2.isConfirmado()) {
-                // Si todavía no hay turno asignado, lo define aleatoriamente en Partida
-                if (partida.getTurnoActual() == null) {
-                    partida.cambiarTurno();
-                }
-            }
-        }
-    }
-
-    public Tablero getTableroPropio(UUID partidaId, UUID jugadorId) {
-        Partida partida = partidas.get(partidaId);
-        if (partida == null) return null;
+    public Tablero getTableroPropio(String codigo, UUID jugadorId) {
+        Partida partida = partidas.get(codigo);
+        if (partida == null) throw new IllegalArgumentException("Partida no encontrada.");
         return partida.getTablero(jugadorId);
     }
 
-    public Tablero getTableroOponente(UUID partidaId, UUID jugadorId) {
-        Partida partida = partidas.get(partidaId);
-        if (partida == null) return null;
+    public Tablero getTableroOponente(String codigo, UUID jugadorId) {
+        Partida partida = partidas.get(codigo);
+        if (partida == null) throw new IllegalArgumentException("Partida no encontrada.");
         return partida.getTableroOponente(jugadorId);
+    }
+
+    public void confirmar(String codigo, UUID jugadorId) {
+        Partida partida = partidas.get(codigo);
+        if (partida == null) throw new IllegalArgumentException("Partida no encontrada.");
+        // Lógica de confirmación de barcos
+    }
+
+    public void shuffle(String codigo, UUID jugadorId) {
+        Partida partida = partidas.get(codigo);
+        if (partida == null) throw new IllegalArgumentException("Partida no encontrada.");
+        Tablero tablero = partida.getTablero(jugadorId);
+        if (tablero != null) tablero.shuffle();
+    }
+
+    // ✅ CORRECCIÓN: Este método ahora retorna un Map con el resultado y el objeto Partida.
+    public Map<String, Object> atacar(String codigo, UUID jugadorId, int fila, int col) {
+        Partida partida = getPartida(codigo);
+        if (partida == null) throw new IllegalArgumentException("Partida no encontrada.");
+
+        // Validaciones previas al ataque
+        if (partida.isJuegoTerminado()) {
+            return Map.of("resultado", ResultadoAtaque.Gameover, "partida", partida);
+        }
+        if (!partida.esTurnoDe(jugadorId)) {
+            return Map.of("resultado", ResultadoAtaque.NO_ES_TU_TURNO, "partida", partida);
+        }
+
+        Tablero oponenteTablero = partida.getTableroOponente(jugadorId);
+        if (oponenteTablero == null) {
+            return Map.of("resultado", ResultadoAtaque.ERROR_TABLERO, "partida", partida);
+        }
+
+        ResultadoAtaque resultado = oponenteTablero.disparar(fila, col);
+
+        // ✅ Lógica de cambio de turno: solo cambia si el ataque no fue una celda ya disparada
+        if (resultado != ResultadoAtaque.YA_ATACADA) {
+            partida.cambiarTurno();
+        }
+
+        // Lógica para determinar si el juego ha terminado
+        if (oponenteTablero.todosLasBarcosHundidos()) {
+            partida.setJuegoTerminado(true);
+            partida.setGanador(jugadorId.toString());
+        }
+
+        return Map.of("resultado", resultado, "partida", partida);
     }
 }
