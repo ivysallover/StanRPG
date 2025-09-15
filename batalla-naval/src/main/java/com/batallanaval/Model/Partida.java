@@ -13,6 +13,7 @@ public class Partida {
     private UUID turnoActual;
     private boolean juegoTerminado;
     private String ganador;
+    private boolean ultimoAtaqueExitoso; // Nuevo campo para la lógica del turno repetido
 
     // Constructor recibe String como código de partida
     public Partida(String partidaId) {
@@ -24,6 +25,7 @@ public class Partida {
         this.turnoActual = null;
         this.juegoTerminado = false;
         this.ganador = null;
+        this.ultimoAtaqueExitoso = false; // Inicializar en false
     }
 
     public String getPartidaId() {
@@ -42,6 +44,15 @@ public class Partida {
         return null;
     }
 
+    // NUEVO: Método para obtener tablero por número de jugador (para el controller)
+    public Tablero getTableroJugador1() {
+        return jugador1Tablero;
+    }
+
+    public Tablero getTableroJugador2() {
+        return jugador2Tablero;
+    }
+
     public UUID getJugador1Id() {
         return jugador1Id;
     }
@@ -52,6 +63,11 @@ public class Partida {
 
     public UUID getTurnoActual() {
         return turnoActual;
+    }
+
+    // NUEVO: Setter para el turno actual
+    public void setTurnoActual(UUID turnoActual) {
+        this.turnoActual = turnoActual;
     }
 
     public boolean isJuegoTerminado() {
@@ -70,9 +86,19 @@ public class Partida {
         this.ganador = ganador;
     }
 
+    // Nuevo setter para indicar si el último ataque fue exitoso
+    public void setUltimoAtaqueExitoso(boolean ultimoAtaqueExitoso) {
+        this.ultimoAtaqueExitoso = ultimoAtaqueExitoso;
+    }
+
     // Cambiar turno entre jugador1 y jugador2
     public void cambiarTurno() {
-        if (jugador2Id == null || turnoActual == null) return; // Evitar NPE
+        // El turno solo cambia si el último ataque no fue un impacto o hundimiento
+        if (ultimoAtaqueExitoso) {
+            this.ultimoAtaqueExitoso = false; // Reiniciar el estado para el próximo turno
+            return; // No cambia el turno, el mismo jugador ataca de nuevo
+        }
+        if (jugador2Id == null || turnoActual == null) return; // Evitar errores si no hay 2 jugadores
         turnoActual = turnoActual.equals(jugador1Id) ? jugador2Id : jugador1Id;
     }
 
@@ -92,7 +118,7 @@ public class Partida {
         }
     }
 
-    // ✅ Setter explícito para el jugador2Id (usado en JuegoService)
+    // Setter explícito para el jugador2Id (usado en JuegoService)
     public void setJugador2Id(UUID jugador2Id) {
         this.jugador2Id = jugador2Id;
         if (turnoActual == null) {

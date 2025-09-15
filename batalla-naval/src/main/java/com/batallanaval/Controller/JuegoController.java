@@ -50,8 +50,7 @@ public class JuegoController {
         return Map.of("resultado", resultado, "partida", partida);
     }
 
-    // 🎯 Endpoint unificado para obtener ambos tableros del juego.
-    // Esto evita múltiples llamadas al backend y simplifica la lógica del frontend.
+    // Endpoint unificado para obtener ambos tableros del juego.
     @GetMapping("/{codigo}/tablero")
     public ResponseEntity<?> getTableros(@PathVariable String codigo, @RequestParam UUID jugadorId) {
         try {
@@ -68,7 +67,7 @@ public class JuegoController {
         }
     }
 
-    // ⚔️ Endpoint para confirmar el posicionamiento de los barcos.
+    // Endpoint para confirmar el posicionamiento de los barcos.
     @PostMapping("/{codigo}/confirmar")
     public ResponseEntity<Void> confirmar(
             @PathVariable String codigo,
@@ -81,7 +80,7 @@ public class JuegoController {
         }
     }
 
-    // 🔀 Endpoint para reordenar los barcos en el tablero.
+    // Endpoint para reordenar los barcos en el tablero.
     @PostMapping("/{codigo}/shuffle")
     public ResponseEntity<Void> shuffle(
             @PathVariable String codigo,
@@ -94,9 +93,7 @@ public class JuegoController {
         }
     }
 
-    // ℹ️ Endpoint para obtener el estado actual de la partida.
-    // Esto se usa para el "polling" del frontend.
-    // ✅ CORRECCIÓN: Este método ahora retorna un mensaje y la partida completa.
+    // Endpoint para obtener el estado actual de la partida.
     @GetMapping("/{codigo}")
     public ResponseEntity<?> getEstado(@PathVariable String codigo, @RequestParam UUID jugadorId) {
         try {
@@ -104,6 +101,16 @@ public class JuegoController {
             if (partida == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Partida no encontrada.");
             }
+
+            // Identificar cuál jugador soy
+            boolean soyJugador1 = partida.getJugador1Id().equals(jugadorId);
+            Tablero miTablero = soyJugador1 ? partida.getTableroJugador1() : partida.getTableroJugador2();
+            Tablero tableroEnemigo = soyJugador1 ? partida.getTableroJugador2() : partida.getTableroJugador1();
+
+            // Verificar estados de confirmación
+            boolean miConfirmacion = miTablero != null && miTablero.isConfirmado();
+            boolean confirmacionEnemiga = tableroEnemigo != null && tableroEnemigo.isConfirmado();
+            boolean ambosConfirmados = miConfirmacion && confirmacionEnemiga;
 
             String mensaje;
             if (partida.isJuegoTerminado()) {
@@ -114,6 +121,14 @@ public class JuegoController {
                 }
             } else if (partida.getJugador2Id() == null) {
                 mensaje = "Juego creado. Esperando al segundo jugador...";
+            } else if (!ambosConfirmados) {
+                if (!miConfirmacion && !confirmacionEnemiga) {
+                    mensaje = "⏳ Ambos jugadores deben confirmar sus tableros para comenzar.";
+                } else if (!miConfirmacion) {
+                    mensaje = "⏳ Esperando que confirmes tu tablero.";
+                } else {
+                    mensaje = "⏳ Esperando que el oponente confirme su tablero.";
+                }
             } else if (partida.esTurnoDe(jugadorId)) {
                 mensaje = "¡Es tu turno! Elige una celda para atacar.";
             } else {
@@ -122,7 +137,10 @@ public class JuegoController {
 
             Map<String, Object> estado = Map.of(
                     "partida", partida,
-                    "mensaje", mensaje
+                    "mensaje", mensaje,
+                    "ambosConfirmados", ambosConfirmados,
+                    "miConfirmacion", miConfirmacion,
+                    "confirmacionEnemiga", confirmacionEnemiga
             );
             return ResponseEntity.ok(estado);
         } catch (Exception e) {
