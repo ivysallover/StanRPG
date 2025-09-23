@@ -83,14 +83,31 @@
         .chat-toggle:hover{ transform: translateY(-2px); }
         .chat-toggle svg{ width: 28px; height: 28px; fill: #fff; }
 
-        /* Panel del chat como 'drawer' flotante - MÁS GRANDE */
+        /* Badge rojo (globito) */
+        .chat-toggle .badge{
+          position: absolute;
+          top: -4px; right: -4px;
+          min-width: 18px; height: 18px;
+          padding: 0 5px;
+          border-radius: 9999px;
+          background: #e11d48; /* rojo */
+          color: #fff;
+          font-size: 11px;
+          line-height: 18px;
+          text-align: center;
+          box-shadow: 0 0 0 2px rgba(255,255,255,0.9);
+          display: none;
+        }
+        .chat-toggle .badge.show{ display: inline-block; }
+
+        /* Panel del chat: flex column (nada se corta) */
         #chatPanel{
           position: fixed;
           right: 24px;
           bottom: 92px;
-          width: 480px;                 /* más ancho */
+          width: 480px;
           max-width: calc(100vw - 48px);
-          max-height: 75vh;             /* más alto pero no full-screen */
+          max-height: 75vh;
           border-radius: 16px;
           box-shadow: 0 16px 40px rgba(0,0,0,.35);
           backdrop-filter: blur(8px);
@@ -99,8 +116,7 @@
           opacity: 0;
           pointer-events: none;
 
-          /* CLAVES PARA QUE NADA SE CORTE */
-          display: flex !important;     /* antes: block !important */
+          display: flex !important;
           flex-direction: column;
           overflow: hidden;
 
@@ -113,26 +129,25 @@
           pointer-events: auto;
         }
 
-        /* Encabezado */
+        /* Encabezado del chat (negro) */
         .chat-header{
           display: flex; align-items: center; justify-content: space-between;
           padding: 10px 14px;
           border-bottom: 1px solid #e5e7eb;
           background: #fff;
-          color: #000;
+          color: #000;                 /* título en negro */
           font-weight: 700;
         }
-
+        /* Fondo lindo del cuerpo */
         .chat-body{
-          flex: 1 1 auto; overflow-y:auto; padding:12px;
+          flex: 1 1 auto;
+          overflow-y: auto;
+          padding: 12px;
           background:
-            linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.9)),
-            url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&q=60&auto=format&fit=crop');
-          background-size: cover;
-          background-position: center;
+            radial-gradient( circle at 20% 10%, rgba(255,255,255,0.7), transparent 60% ),
+            repeating-linear-gradient(45deg, rgba(0,0,0,0.02) 0, rgba(0,0,0,0.02) 2px, transparent 2px, transparent 6px),
+            linear-gradient(180deg,#f8fafc 0%,#eef2f7 100%);
         }
-
-        /* PIE de inputs: nada se sale */
         .chat-inputs{
           flex: 0 0 auto;
           display: flex; gap: 8px; align-items: center;
@@ -144,17 +159,20 @@
         }
         .chat-inputs input{
           padding:10px; border:1px solid #ccc; border-radius:8px;
-          min-width: 0;                  /* permite encoger en flex (evita overflow) */
+          min-width: 0; /* permite encoger en flex */
         }
         #chatName{ flex: 0 0 35%; min-width: 120px; }
         #chatInput{ flex: 1 1 auto; }
         .chat-inputs .btn{
-          padding: 10px 14px;            /* botón más compacto */
+          padding: 10px 14px;
           border-radius: 8px;
           white-space: nowrap;
         }
+        .chat-close{
+          background: transparent; border: none; font-size: 20px; line-height: 1; cursor: pointer; color:#333;
+        }
 
-        /* Burbujas y alineación (como ya tenías) */
+        /* Burbujas y alineación */
         .chat-line{ display:flex; margin:6px 0; }
         .chat-line.other{ justify-content: flex-start; }
         .chat-line.self{ justify-content: flex-end; }
@@ -165,21 +183,43 @@
           border-radius: 12px;
           padding: 8px 10px;
           box-shadow: 0 4px 10px rgba(0,0,0,.06);
+          word-break: break-word;
         }
         .chat-line.self .bubble{
           background:#e6f7f1;
           border-color:#c7eee2;
         }
 
+        /* Toast */
+        .toast{
+          position: fixed;
+          right: 24px;
+          bottom: 180px;
+          background:#111;
+          color:#fff;
+          padding:10px 14px;
+          border-radius:10px;
+          box-shadow:0 10px 30px rgba(0,0,0,.3);
+          opacity:0;
+          transform: translateY(10px);
+          pointer-events:none;
+          transition: opacity .2s ease, transform .2s ease;
+          z-index: 1001;
+        }
+        .toast.show{
+          opacity:1;
+          transform: translateY(0);
+        }
+
         @media (max-width: 480px){
           #chatPanel{ width: calc(100vw - 48px); }
-          .chat-body{ max-height: none; }      /* maneja altura vía flex */
+          .chat-body{ max-height: none; }
           .chat-inputs .btn{ padding: 8px 10px; font-size: 14px; }
         }
     </style>
 </head>
 
-<!-- Librerías SockJS/STOMP -->
+<!-- SockJS/STOMP -->
 <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 
@@ -193,6 +233,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M20 2H4a2 2 0 0 0-2 2v14l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/>
         </svg>
+        <span id="chatBadge" class="badge" aria-hidden="true"></span>
     </button>
 
     <div class="game-controls">
@@ -231,7 +272,7 @@
         </div>
     </div>
 
-    <!-- Panel de Chat (drawer) -->
+    <!-- Panel de Chat -->
     <div id="chatPanel" style="display:none; margin-top:20px;">
         <div class="chat-header">
             <span>Chat</span>
@@ -241,9 +282,9 @@
             <div id="chatBox"></div>
         </div>
         <div class="chat-inputs">
-            <input id="chatName" placeholder="Tu nombre (se fija al enviar)" style="flex:0 0 35%;">
-            <input id="chatInput" placeholder="Escribe un mensaje..." style="flex:1;" onkeydown="if(event.key==='Enter'){enviarMensajeChat();}">
-            <button onclick="enviarMensajeChat()" class="btn" style="flex:0 0 auto;">Enviar</button>
+            <input id="chatName" placeholder="Tu nombre (se fija al enviar)">
+            <input id="chatInput" placeholder="Escribe un mensaje..." onkeydown="if(event.key==='Enter'){enviarMensajeChat();}">
+            <button onclick="enviarMensajeChat()" class="btn">Enviar</button>
         </div>
     </div>
 
@@ -586,14 +627,22 @@
       "#e53935","#8e24aa","#3949ab","#00897b","#f4511e",
       "#6d4c41","#039be5","#7cb342","#ffb300","#d81b60"
     ];
-
     function colorFor(identity) {
       let h = 0;
       for (let i = 0; i < identity.length; i++) h = (h * 31 + identity.charCodeAt(i)) | 0;
       return NAME_COLORS[Math.abs(h) % NAME_COLORS.length];
     }
 
-    // Toast helper
+    // --- CENSURA: "volpin" -> "******" (palabra completa, insensible a mayúsculas) ---
+    function censorText(str){
+      return String(str).replace(/\bvolpin\b/gi, '******');
+    }
+
+    function censorText(str){
+      return String(str).replace(/\bcfk\b/gi, '***');
+    }
+
+    // Toast
     function showToast(msg, ms=1800){
       const t = document.getElementById('toast');
       if(!t) return;
@@ -602,19 +651,33 @@
       setTimeout(()=> t.classList.remove('show'), ms);
     }
 
-    let stompClient = null;
-
-    function chatNameKey(){
-        if (!partidaId || !jugadorId) return null; // aún no listo
-        return `chatName:${partidaId}:${jugadorId}`;
+    // Badge (globito rojo)
+    let unreadCount = 0;
+    function setBadge(n){
+      unreadCount = Math.max(0, n|0);
+      const b = document.getElementById('chatBadge');
+      if (!b) return;
+      if (unreadCount > 0) {
+        b.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
+        b.classList.add('show');
+      } else {
+        b.textContent = '';
+        b.classList.remove('show');
+      }
     }
+    function bumpBadge(){ setBadge(unreadCount + 1); }
+    function clearBadge(){ setBadge(0); }
 
-
+    // Nombre por partida + jugador
+    let stompClient = null;
+    function chatNameKey(){
+      if (!partidaId || !jugadorId) return null;
+      return `chatName:${partidaId}:${jugadorId}`;
+    }
     function initChatNameLock(){
       const input = document.getElementById('chatName');
       const key = chatNameKey();
       if (!input || !key) return;
-
       const saved = localStorage.getItem(key);
       if (saved) {
         input.value = saved;
@@ -629,7 +692,6 @@
       }
     }
 
-
     function conectarChat() {
       if (!partidaId) return;
       try {
@@ -638,8 +700,16 @@
         // stompClient.debug = null;
         stompClient.connect({}, function () {
           stompClient.subscribe('/topic/chat/' + partidaId, function (msg) {
-            const data = JSON.parse(msg.body);
-            agregarMensajeAlChat(data.from || 'Jugador', data.content || '', data.timestamp);
+            const data = JSON.parse(msg.body || '{}');
+            const from = data.from || 'Jugador';
+            const content = data.content || '';
+            agregarMensajeAlChat(from, content, data.timestamp);
+
+            // Si el mensaje NO es mío y el chat está cerrado, mostrar badge
+            const key = chatNameKey();
+            const myName = key ? localStorage.getItem(key) : null;
+            const isSelf = myName && from === myName;
+            if (!isSelf && !chatOpen) bumpBadge();
           });
           document.getElementById('chatToggle').style.display = 'flex';
           initChatNameLock();
@@ -651,7 +721,6 @@
 
     function enviarMensajeChat() {
       if (!stompClient || !partidaId || !jugadorId) return;
-
       const key = chatNameKey();
       const nameInput = document.getElementById('chatName');
       const textInput = document.getElementById('chatInput');
@@ -663,6 +732,7 @@
           const suf = String(jugadorId).slice(-4);
           name = `Jugador-${suf}`;
         }
+        name = censorText(name); // censura en nombre
         if (key) {
           localStorage.setItem(key, name);
         }
@@ -670,20 +740,19 @@
         nameInput.disabled = true;
         nameInput.style.opacity = '0.6';
         nameInput.title = 'Nombre fijado para esta partida (tu jugador)';
-        // si tenés la función showToast del archivo anterior, podés dejar esta línea:
-        if (typeof showToast === 'function') showToast('Nombre guardado para esta partida ✅');
+        showToast('Nombre guardado para esta partida ✅');
       } else {
-        name = existing; // fuerza uso del nombre fijado para ESTE jugador
+        name = existing;
       }
 
-      const text = (textInput.value || '').trim();
+      let text = (textInput.value || '').trim();
       if (!text) return;
+      text = censorText(text); // censura en mensaje
 
       const payload = { from: name, content: text };
       stompClient.send('/app/chat/' + partidaId, {}, JSON.stringify(payload));
       textInput.value = '';
     }
-
 
     function agregarMensajeAlChat(from, content, ts) {
       const box = document.getElementById('chatBox');
@@ -691,6 +760,10 @@
 
       const identity = (partidaId ? String(partidaId) : "") + "|" + (from || "Jugador");
       const nameColor = colorFor(identity);
+
+      // Censura al mostrar (por si el otro cliente no censuró al enviar)
+      const fromDisplay = censorText(from || "Jugador");
+      const contentDisplay = censorText(content || "");
 
       const key = chatNameKey();
       const savedName = key ? localStorage.getItem(key) : null;
@@ -705,12 +778,12 @@
       const nameSpan = document.createElement('span');
       nameSpan.className = 'chat-name';
       nameSpan.style.color = nameColor;
-      nameSpan.textContent = `[${time}] ${from || "Jugador"}: `;
+      nameSpan.textContent = `[${time}] ${fromDisplay}: `;
 
       const msgSpan = document.createElement('span');
       msgSpan.className = 'chat-text';
       msgSpan.style.color = '#000';
-      msgSpan.textContent = content ? content : '';
+      msgSpan.textContent = contentDisplay;
 
       bubble.appendChild(nameSpan);
       bubble.appendChild(msgSpan);
@@ -719,9 +792,7 @@
       box.scrollTop = box.scrollHeight;
     }
 
-
     let chatOpen = false;
-
     function toggleChat(force) {
       const panel = document.getElementById('chatPanel');
       if (force === true) chatOpen = true;
@@ -733,13 +804,13 @@
         .setAttribute('aria-label', chatOpen ? 'Cerrar chat' : 'Abrir chat');
 
       if (chatOpen) {
-      setTimeout(() => {
-        const box = document.getElementById('chatBox');
-        if (box) box.scrollTop = box.scrollHeight;
-        document.getElementById('chatInput')?.focus();
-      }, 50);
-}
-
+        clearBadge(); // al abrir, se limpia el globito rojo
+        setTimeout(() => {
+          const box = document.getElementById('chatBox');
+          if (box) box.scrollTop = box.scrollHeight;
+          document.getElementById('chatInput')?.focus();
+        }, 50);
+      }
     }
 
     document.addEventListener('keydown', (e) => {
