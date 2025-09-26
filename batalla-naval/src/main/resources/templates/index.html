@@ -633,13 +633,12 @@
       return NAME_COLORS[Math.abs(h) % NAME_COLORS.length];
     }
 
-    // --- CENSURA: "volpin" -> "******" (palabra completa, insensible a mayúsculas) ---
-    function censorText(str){
-      return String(str).replace(/\bvolpin\b/gi, '******');
-    }
-
-    function censorText(str){
-      return String(str).replace(/\bcfk\b/gi, '***');
+    // --- CENSURA
+    function censorText(str) {
+    return String(str)
+        .replace(/\bvolpin\b/gi, '******')
+        .replace(/\bmierda\b/gi, '******')
+        .replace(/\bputo\b/gi, '****');
     }
 
     // Toast

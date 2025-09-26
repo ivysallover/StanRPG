@@ -107,17 +107,6 @@ public class Partida {
         return turnoActual != null && turnoActual.equals(jugadorId);
     }
 
-    // Agregar el segundo jugador con UUID automático
-    public void agregarSegundoJugador() {
-        if (this.jugador2Id == null) {
-            this.jugador2Id = UUID.randomUUID();
-            // Asignar turno si aún no había
-            if (turnoActual == null) {
-                turnoActual = new Random().nextBoolean() ? jugador1Id : jugador2Id;
-            }
-        }
-    }
-
     // Setter explícito para el jugador2Id (usado en JuegoService)
     public void setJugador2Id(UUID jugador2Id) {
         this.jugador2Id = jugador2Id;
