@@ -5,7 +5,7 @@ import java.util.Random;
 
 public class Partida {
 
-    private final String partidaId;          // código de ingreso de la partida
+    private final String partidaId;
     private final Tablero jugador1Tablero;
     private final Tablero jugador2Tablero;
     private final UUID jugador1Id;
@@ -65,7 +65,6 @@ public class Partida {
         return turnoActual;
     }
 
-    // NUEVO: Setter para el turno actual
     public void setTurnoActual(UUID turnoActual) {
         this.turnoActual = turnoActual;
     }
@@ -86,7 +85,8 @@ public class Partida {
         this.ganador = ganador;
     }
 
-    // Nuevo setter para indicar si el último ataque fue exitoso
+    public boolean getUltimoAtaqueExitoso() { return ultimoAtaqueExitoso; }
+
     public void setUltimoAtaqueExitoso(boolean ultimoAtaqueExitoso) {
         this.ultimoAtaqueExitoso = ultimoAtaqueExitoso;
     }
