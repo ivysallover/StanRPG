@@ -8,58 +8,8 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Roboto', sans-serif;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            color: white;
-            overflow-x: hidden;
-            position: relative;
-            background: linear-gradient(135deg, #1E90FF 0%, #87CEFA 100%);
-            background: url('https://i.pinimg.com/originals/b8/cb/0f/b8cb0fd2b86bbc036709351cc8325c31.gif') no-repeat center center/cover;
-            background-attachment: fixed;
-        }
-        h1 { font-family: 'Press Start 2P', cursive; font-size: 2.5rem; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); margin-bottom: 20px; position: relative; z-index: 1; }
-        .container { max-width: 1400px; width: 100%; background: rgba(255,255,255,0.1); backdrop-filter: blur(15px); border-radius: 20px; padding: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); position: relative; z-index: 1; }
-        .game-controls { text-align: center; margin-bottom: 30px; }
-        .btn { background: linear-gradient(45deg, #ff6b6b, #ee5a6f); border: none; padding: 12px 24px; border-radius: 25px; color: white; font-weight: bold; cursor: pointer; margin: 5px 10px; transition: all 0.3s ease; font-size: 16px; }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-        .btn-secondary { background: linear-gradient(45deg, #4ecdc4, #44a08d); }
-        #gameIdDisplay { margin-top: 10px; font-size: 1.2rem; }
-        .status { text-align: center; margin: 20px 0; padding: 15px; background: rgba(255,255,255,0.2); border-radius: 10px; font-size: 18px; min-height: 50px; display: flex; align-items: center; justify-content: center; }
-        .game-area { display: flex; justify-content: space-around; gap: 40px; flex-wrap: wrap; position: relative; z-index: 1; }
-        .tablero-container { text-align: center; position: relative; }
-        .tablero-title { font-size: 1.4rem; margin-bottom: 15px; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); position: relative; z-index: 2; }
-        .tablero { display: grid; grid-template-columns: repeat(10, 40px); grid-template-rows: repeat(10, 40px); gap: 2px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; box-shadow: 0 10px 20px rgba(0,0,0,0.2); position: relative; z-index: 2; }
-        .celda { width: 40px; height: 40px; border: 1px solid #333; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; transition: all 0.2s ease; border-radius: 3px; position: relative; overflow: hidden; }
-        .celda:hover { transform: scale(1.1); z-index: 3; }
-        .celda.agua { background: #87CEEB; }
-        .celda.barco { background: #696969; }
-        .celda.agua-atacada { background: #4169E1; }
-        .celda.impacto { background: #FF8C00; }
-        .celda.hundido { background: #DC143C; }
-        .celda.enemigo { background: #D3D3D3; color: #333; }
-        .celda.disabled { cursor: not-allowed; opacity: 0.6; }
-        .celda.no-atacable { cursor: not-allowed; opacity: 0.4; background: #999 !important; }
-        @keyframes explosion { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: 0.8; } 100% { transform: scale(0); opacity: 0; } }
-        .celda.impacto::after, .celda.hundido::after { content: "💥"; position: absolute; font-size: 24px; animation: explosion 0.5s ease-out forwards; }
-        .game-info { display: flex; justify-content: space-between; margin-top: 20px; flex-wrap: wrap; gap: 20px; }
-        .info-card { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; flex: 1; min-width: 200px; }
-        .info-title { font-weight: bold; margin-bottom: 10px; }
-        .loading { display: inline-block; width: 20px; height: 20px; border: 2px solid #fff; border-radius: 50%; border-top-color: transparent; animation: spin 1s linear infinite; margin-right: 10px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .hidden { display: none; }
-        @media(max-width: 768px) {
-            .game-area { flex-direction: column; align-items: center; }
-            .tablero { grid-template-columns: repeat(10, 30px); grid-template-rows: repeat(10, 30px); }
-            .celda { width: 30px; height: 30px; font-size: 12px; }
-        }
-    </style>
+    <!-- CSS -->
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
