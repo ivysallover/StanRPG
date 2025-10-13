@@ -27,6 +27,47 @@ public class Partida {
         this.ultimoAtaqueExitoso = false; // Inicializar en false
     }
 
+    public ResultadoAtaque atacar(UUID jugadorId, int fila, int col) {
+        if (!esTurnoDe(jugadorId)) {
+            return ResultadoAtaque.NO_ES_TU_TURNO;
+        }
+
+        Tablero oponenteTablero = getTableroOponente(jugadorId);
+        if (oponenteTablero == null) {
+            return ResultadoAtaque.ERROR_TABLERO;
+        }
+
+        String resultadoDisparo = oponenteTablero.disparar(fila, col);
+        ResultadoAtaque resultado = ResultadoAtaque.valueOf(resultadoDisparo);
+
+        boolean ataqueExitoso = (resultado == ResultadoAtaque.IMPACTO || resultado == ResultadoAtaque.HUNDIDO);
+        this.setUltimoAtaqueExitoso(ataqueExitoso);
+
+        if (resultado != ResultadoAtaque.YA_ATACADA) {
+            this.cambiarTurno();
+        }
+
+        if (oponenteTablero.todosLasBarcosHundidos()) {
+            this.setJuegoTerminado(true);
+            this.setGanador(jugadorId.toString());
+        }
+
+        return resultado;
+    }
+
+    public void cambiarTurno() {
+        if (ultimoAtaqueExitoso) {
+            this.ultimoAtaqueExitoso = false;
+            return;
+        }
+        if (jugador2Id == null || turnoActual == null) return;
+        turnoActual = turnoActual.equals(jugador1Id) ? jugador2Id : jugador1Id;
+    }
+
+    public boolean esTurnoDe(UUID jugadorId) {
+        return turnoActual != null && turnoActual.equals(jugadorId);
+    }
+
     public String getPartidaId() {
         return partidaId;
     }
@@ -59,6 +100,13 @@ public class Partida {
         return jugador2Id;
     }
 
+    public void setJugador2Id(UUID jugador2Id) {
+        this.jugador2Id = jugador2Id;
+        if (turnoActual == null) {
+            turnoActual = new Random().nextBoolean() ? jugador1Id : jugador2Id;
+
+        }
+    }
     public UUID getTurnoActual() {
         return turnoActual;
     }
@@ -83,31 +131,11 @@ public class Partida {
         this.ganador = ganador;
     }
 
-    public boolean getUltimoAtaqueExitoso() { return ultimoAtaqueExitoso; }
+    public boolean getUltimoAtaqueExitoso() {
+        return ultimoAtaqueExitoso;
+    }
 
     public void setUltimoAtaqueExitoso(boolean ultimoAtaqueExitoso) {
         this.ultimoAtaqueExitoso = ultimoAtaqueExitoso;
-    }
-
-    public void cambiarTurno() {
-        if (ultimoAtaqueExitoso) {
-            this.ultimoAtaqueExitoso = false;
-            return;
-        }
-        if (jugador2Id == null || turnoActual == null) return;
-        turnoActual = turnoActual.equals(jugador1Id) ? jugador2Id : jugador1Id;
-    }
-
-
-    public boolean esTurnoDe(UUID jugadorId) {
-        return turnoActual != null && turnoActual.equals(jugadorId);
-    }
-
-
-    public void setJugador2Id(UUID jugador2Id) {
-        this.jugador2Id = jugador2Id;
-        if (turnoActual == null) {
-            turnoActual = new Random().nextBoolean() ? jugador1Id : jugador2Id;
-        }
     }
 }

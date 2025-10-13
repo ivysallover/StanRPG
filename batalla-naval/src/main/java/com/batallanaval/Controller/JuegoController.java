@@ -19,15 +19,11 @@ public class JuegoController {
     @Autowired
     private JuegoService juegoService;
 
-    // Crear nueva partida con un código elegido.
-    // Retorna la partida completa para que el frontend obtenga el jugador1Id y el codigo.
     @PostMapping("/nuevo")
     public Partida crearNuevaPartida(@RequestParam String codigo) {
         return juegoService.crearNuevaPartida(codigo);
     }
 
-    // Unirse a una partida existente.
-    // Retorna solo el UUID del segundo jugador como texto plano.
     @PostMapping("/{codigo}/unirse")
     public ResponseEntity<String> unirsePartida(@PathVariable String codigo) {
         try {
@@ -38,7 +34,6 @@ public class JuegoController {
         }
     }
 
-    // Atacar en la partida.
     @PostMapping("/{codigo}/atacar")
     public Map<String, Object> atacar(
             @PathVariable String codigo,
@@ -50,7 +45,6 @@ public class JuegoController {
         return Map.of("resultado", resultado, "partida", partida);
     }
 
-    // Endpoint unificado para obtener ambos tableros del juego.
     @GetMapping("/{codigo}/tablero")
     public ResponseEntity<?> getTableros(@PathVariable String codigo, @RequestParam UUID jugadorId) {
         try {
@@ -67,7 +61,6 @@ public class JuegoController {
         }
     }
 
-    // Endpoint para confirmar el posicionamiento de los barcos.
     @PostMapping("/{codigo}/confirmar")
     public ResponseEntity<Void> confirmar(
             @PathVariable String codigo,
@@ -80,7 +73,6 @@ public class JuegoController {
         }
     }
 
-    // Endpoint para reordenar los barcos en el tablero.
     @PostMapping("/{codigo}/shuffle")
     public ResponseEntity<Void> shuffle(
             @PathVariable String codigo,
@@ -93,7 +85,6 @@ public class JuegoController {
         }
     }
 
-    // Endpoint para obtener el estado actual de la partida.
     @GetMapping("/{codigo}")
     public ResponseEntity<?> getEstado(@PathVariable String codigo, @RequestParam UUID jugadorId) {
         try {
@@ -102,12 +93,10 @@ public class JuegoController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Partida no encontrada.");
             }
 
-            // Identificar cuál jugador soy
             boolean soyJugador1 = partida.getJugador1Id().equals(jugadorId);
             Tablero miTablero = soyJugador1 ? partida.getTableroJugador1() : partida.getTableroJugador2();
             Tablero tableroEnemigo = soyJugador1 ? partida.getTableroJugador2() : partida.getTableroJugador1();
 
-            // Verificar estados de confirmación
             boolean miConfirmacion = miTablero != null && miTablero.isConfirmado();
             boolean confirmacionEnemiga = tableroEnemigo != null && tableroEnemigo.isConfirmado();
             boolean ambosConfirmados = miConfirmacion && confirmacionEnemiga;

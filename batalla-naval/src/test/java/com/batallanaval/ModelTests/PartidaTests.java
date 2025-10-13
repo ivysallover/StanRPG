@@ -4,6 +4,8 @@ import com.batallanaval.Model.Partida;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class PartidaTest {
@@ -30,7 +32,25 @@ class PartidaTest {
             Partida p = new Partida("kkkk");
             p.setTurnoActual(p.getJugador1Id());
             assertSame(p.getJugador1Id(), p.getTurnoActual());
+        }
+    }
 
+    @Nested
+    class Tableros {
+        @Test
+        void tablero() {
+            Partida p = new Partida("kkkk");
+            p.setJugador2Id(UUID.randomUUID());
+            assertSame(p.getTableroJugador1(), p.getTablero(p.getJugador1Id()));
+            assertSame(p.getTableroJugador2(), p.getTablero(p.getJugador2Id()));
+        }
+
+        @Test
+        void tablero_oponente() {
+            Partida p = new Partida("kkkk");
+            p.setJugador2Id(UUID.randomUUID());
+            assertSame(p.getTableroJugador2(), p.getTableroOponente(p.getJugador1Id()));
+            assertSame(p.getTableroJugador1(), p.getTableroOponente(p.getJugador2Id()));
         }
     }
 }
