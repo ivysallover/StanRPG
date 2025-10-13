@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>⚓ Batalla Naval Épica ⚓</title>
 
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -61,11 +62,11 @@
             .celda { width: 30px; height: 30px; font-size: 12px; }
         }
 
-        /* Chat: mensajes negros + nombre en negrita */
+
         #chatBox { color: #000; }
         #chatBox .chat-name { font-weight: 700; }
 
-        /* Globo flotante del chat */
+
         .chat-toggle{
           position: fixed;
           right: 24px;
@@ -83,14 +84,14 @@
         .chat-toggle:hover{ transform: translateY(-2px); }
         .chat-toggle svg{ width: 28px; height: 28px; fill: #fff; }
 
-        /* Badge rojo (globito) */
+
         .chat-toggle .badge{
           position: absolute;
           top: -4px; right: -4px;
           min-width: 18px; height: 18px;
           padding: 0 5px;
           border-radius: 9999px;
-          background: #e11d48; /* rojo */
+          background: #e11d48;
           color: #fff;
           font-size: 11px;
           line-height: 18px;
@@ -100,7 +101,7 @@
         }
         .chat-toggle .badge.show{ display: inline-block; }
 
-        /* Panel del chat: flex column (nada se corta) */
+
         #chatPanel{
           position: fixed;
           right: 24px;
@@ -129,16 +130,16 @@
           pointer-events: auto;
         }
 
-        /* Encabezado del chat (negro) */
+
         .chat-header{
           display: flex; align-items: center; justify-content: space-between;
           padding: 10px 14px;
           border-bottom: 1px solid #e5e7eb;
           background: #fff;
-          color: #000;                 /* título en negro */
+          color: #000;
           font-weight: 700;
         }
-        /* Fondo lindo del cuerpo */
+
         .chat-body{
           flex: 1 1 auto;
           overflow-y: auto;
@@ -159,7 +160,7 @@
         }
         .chat-inputs input{
           padding:10px; border:1px solid #ccc; border-radius:8px;
-          min-width: 0; /* permite encoger en flex */
+          min-width: 0;
         }
         #chatName{ flex: 0 0 35%; min-width: 120px; }
         #chatInput{ flex: 1 1 auto; }
@@ -172,7 +173,7 @@
           background: transparent; border: none; font-size: 20px; line-height: 1; cursor: pointer; color:#333;
         }
 
-        /* Burbujas y alineación */
+
         .chat-line{ display:flex; margin:6px 0; }
         .chat-line.other{ justify-content: flex-start; }
         .chat-line.self{ justify-content: flex-end; }
@@ -190,7 +191,7 @@
           border-color:#c7eee2;
         }
 
-        /* Toast */
+
         .toast{
           position: fixed;
           right: 24px;
@@ -216,10 +217,20 @@
           .chat-body{ max-height: none; }
           .chat-inputs .btn{ padding: 8px 10px; font-size: 14px; }
         }
+
+        @keyframes shake {
+          10%, 90% { transform: translate3d(-1px, 0, 0); }
+          20%, 80% { transform: translate3d(2px, 0, 0); }
+          30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+          40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        .shake-effect {
+          animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both;
+        }
     </style>
 </head>
 
-<!-- SockJS/STOMP -->
 <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 
@@ -228,7 +239,6 @@
 <div class="container">
     <h1>⚓ Batalla Naval Épica ⚓</h1>
 
-    <!-- Globo flotante -->
     <button id="chatToggle" class="chat-toggle" onclick="toggleChat()" aria-label="Abrir chat">
         <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M20 2H4a2 2 0 0 0-2 2v14l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/>
@@ -272,7 +282,6 @@
         </div>
     </div>
 
-    <!-- Panel de Chat -->
     <div id="chatPanel" style="display:none; margin-top:20px;">
         <div class="chat-header">
             <span>Chat</span>
@@ -288,7 +297,6 @@
         </div>
     </div>
 
-    <!-- Toast -->
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 </div>
 
@@ -299,11 +307,10 @@
     let disparos = 0;
     let impactos = 0;
     let pollingInterval = null;
-    let jugador1Confirmado = false;
-    let jugador2Confirmado = false;
     let ambosConfirmados = false;
     let ultimoMensajeAtaque = "";
-    const API_BASE = '/juego';
+    const API_BASE = 'http://localhost:8080/juego';
+    let confettiInterval = null;
 
     document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('gameArea').style.display = 'none';
@@ -312,11 +319,24 @@
         document.getElementById('confirmarBtn').disabled = true;
     });
 
+    function detenerConfeti() {
+        if (confettiInterval) {
+            clearInterval(confettiInterval);
+            confettiInterval = null;
+        }
+    }
+
     async function crearJuego() {
+        detenerConfeti();
         const codigo = prompt('Introduce un código único para tu partida:');
         if (!codigo) return;
         try {
             mostrarCargando('Creando nuevo juego...');
+            juegoTerminado = false;
+            disparos = 0;
+            impactos = 0;
+            actualizarEstadisticas();
+
             const response = await fetch(`${API_BASE}/nuevo?codigo=${codigo}`, { method: 'POST' });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const partida = await response.json();
@@ -328,21 +348,26 @@
             document.getElementById('status').textContent = 'Juego creado. Esperando otro jugador...';
             activarControles();
             conectarChat();
+            await cargarTableros();
+            if (pollingInterval) clearInterval(pollingInterval);
+            pollingInterval = setInterval(verificarEstadoJuego, 2000);
         } catch (e) {
             console.error(e);
             document.getElementById('status').textContent = '❌ Error al crear el juego.';
-        } finally {
-            await cargarTableros();
-            if (pollingInterval) clearInterval(pollingInterval);
-            pollingInterval = setInterval(verificarEstadoJuego, 500);
         }
     }
 
     async function unirseJuego() {
+        detenerConfeti();
         const idIngresado = prompt('Introduce el ID de la partida:');
         if (!idIngresado) return;
         try {
             mostrarCargando('Uniéndose al juego...');
+            juegoTerminado = false;
+            disparos = 0;
+            impactos = 0;
+            actualizarEstadisticas();
+
             const response = await fetch(`${API_BASE}/${idIngresado}/unirse`, { method: 'POST' });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             jugadorId = await response.text();
@@ -352,13 +377,12 @@
             document.getElementById('gameIdDisplay').textContent = `Te has unido al juego: ${partidaId}`;
             activarControles();
             conectarChat();
+            await cargarTableros();
+            if (pollingInterval) clearInterval(pollingInterval);
+            pollingInterval = setInterval(verificarEstadoJuego, 2000);
         } catch (e) {
             console.error(e);
             document.getElementById('status').textContent = '❌ Error al unirse. Verifica el ID.';
-        } finally {
-            await cargarTableros();
-            if (pollingInterval) clearInterval(pollingInterval);
-            pollingInterval = setInterval(verificarEstadoJuego, 500);
         }
     }
 
@@ -550,79 +574,7 @@
         document.getElementById('confirmarBtn').disabled = false;
     }
 
-    async function verificarEstadoJuego() {
-        if (!partidaId || !jugadorId) return;
 
-        try {
-            const response = await fetch(`${API_BASE}/${partidaId}?jugadorId=${jugadorId}`);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const data = await response.json();
-            const partida = data.partida || data;
-
-            if (!partida) return;
-
-            const soyJugador1 = partida.jugador1Id === jugadorId;
-            const tableroJugador = soyJugador1 ? partida.tableroJugador1 : partida.tableroJugador2;
-            const tableroEnemigo = soyJugador1 ? partida.tableroJugador2 : partida.tableroJugador1;
-
-            const nuevoJugadorConfirmado = tableroJugador?.confirmado || false;
-            const nuevoEnemigoConfirmado = tableroEnemigo?.confirmado || false;
-            const nuevosAmbosConfirmados = nuevoJugadorConfirmado && nuevoEnemigoConfirmado;
-
-            const huboCambio =
-                jugador1Confirmado !== nuevoJugadorConfirmado ||
-                jugador2Confirmado !== nuevoEnemigoConfirmado ||
-                ambosConfirmados !== nuevosAmbosConfirmados;
-
-            jugador1Confirmado = nuevoJugadorConfirmado;
-            jugador2Confirmado = nuevoEnemigoConfirmado;
-            ambosConfirmados = nuevosAmbosConfirmados;
-
-            if (huboCambio || ambosConfirmados) {
-                mostrarTablero('tableroJugador', tableroJugador, false);
-                mostrarTablero('tableroEnemigo', tableroEnemigo, true);
-            }
-
-            if (!ultimoMensajeAtaque) {
-                if (juegoTerminado) {
-                    document.getElementById('status').textContent = '🏆 Juego terminado';
-                    return;
-                }
-
-                if (!ambosConfirmados) {
-                    if (!nuevoJugadorConfirmado && !nuevoEnemigoConfirmado) {
-                        document.getElementById('status').textContent = '⏳ Ambos jugadores deben confirmar sus tableros para comenzar.';
-                    } else if (!nuevoJugadorConfirmado) {
-                        document.getElementById('status').textContent = '⏳ Esperando que confirmes tu tablero.';
-                    } else if (!nuevoEnemigoConfirmado) {
-                        document.getElementById('status').textContent = '⏳ Esperando que el oponente confirme su tablero.';
-                    }
-                } else {
-                    if (partida.turnoActual === jugadorId) {
-                        document.getElementById('status').textContent = '🎯 ¡Es tu turno! Elige una celda para atacar.';
-                    } else {
-                        document.getElementById('status').textContent = '⏳ Esperando el turno del oponente...';
-                    }
-                }
-            }
-
-            if (partida.juegoTerminado) {
-                juegoTerminado = true;
-                clearInterval(pollingInterval);
-
-                if (partida.ganador === jugadorId) {
-                    document.getElementById('status').textContent = '🏆 ¡GANASTE! Has hundido toda la flota enemiga.';
-                } else {
-                    document.getElementById('status').textContent = '💀 ¡PERDISTE! Tu flota ha sido completamente destruida.';
-                }
-            }
-
-        } catch (e) {
-            console.error('Error al verificar estado del juego:', e);
-        }
-    }
-
-    // Paleta de colores para nombres
     const NAME_COLORS = [
       "#e53935","#8e24aa","#3949ab","#00897b","#f4511e",
       "#6d4c41","#039be5","#7cb342","#ffb300","#d81b60"
@@ -633,7 +585,7 @@
       return NAME_COLORS[Math.abs(h) % NAME_COLORS.length];
     }
 
-    // --- CENSURA
+
     function censorText(str) {
     return String(str)
         .replace(/\bvolpin\b/gi, '******')
@@ -641,7 +593,7 @@
         .replace(/\bputo\b/gi, '****');
     }
 
-    // Toast
+
     function showToast(msg, ms=1800){
       const t = document.getElementById('toast');
       if(!t) return;
@@ -650,7 +602,7 @@
       setTimeout(()=> t.classList.remove('show'), ms);
     }
 
-    // Badge (globito rojo)
+
     let unreadCount = 0;
     function setBadge(n){
       unreadCount = Math.max(0, n|0);
@@ -667,7 +619,7 @@
     function bumpBadge(){ setBadge(unreadCount + 1); }
     function clearBadge(){ setBadge(0); }
 
-    // Nombre por partida + jugador
+
     let stompClient = null;
     function chatNameKey(){
       if (!partidaId || !jugadorId) return null;
@@ -694,17 +646,15 @@
     function conectarChat() {
       if (!partidaId) return;
       try {
-        const socket = new SockJS('/ws');
+        const socket = new SockJS('http://localhost:8080/ws');
         stompClient = Stomp.over(socket);
-        // stompClient.debug = null;
+        stompClient.debug = null;
         stompClient.connect({}, function () {
           stompClient.subscribe('/topic/chat/' + partidaId, function (msg) {
             const data = JSON.parse(msg.body || '{}');
             const from = data.from || 'Jugador';
             const content = data.content || '';
             agregarMensajeAlChat(from, content, data.timestamp);
-
-            // Si el mensaje NO es mío y el chat está cerrado, mostrar badge
             const key = chatNameKey();
             const myName = key ? localStorage.getItem(key) : null;
             const isSelf = myName && from === myName;
@@ -731,10 +681,8 @@
           const suf = String(jugadorId).slice(-4);
           name = `Jugador-${suf}`;
         }
-        name = censorText(name); // censura en nombre
-        if (key) {
-          localStorage.setItem(key, name);
-        }
+        name = censorText(name);
+        if (key) localStorage.setItem(key, name);
         nameInput.value = name;
         nameInput.disabled = true;
         nameInput.style.opacity = '0.6';
@@ -746,7 +694,7 @@
 
       let text = (textInput.value || '').trim();
       if (!text) return;
-      text = censorText(text); // censura en mensaje
+      text = censorText(text);
 
       const payload = { from: name, content: text };
       stompClient.send('/app/chat/' + partidaId, {}, JSON.stringify(payload));
@@ -756,34 +704,25 @@
     function agregarMensajeAlChat(from, content, ts) {
       const box = document.getElementById('chatBox');
       const time = ts ? new Date(ts).toLocaleTimeString() : new Date().toLocaleTimeString();
-
       const identity = (partidaId ? String(partidaId) : "") + "|" + (from || "Jugador");
       const nameColor = colorFor(identity);
-
-      // Censura al mostrar (por si el otro cliente no censuró al enviar)
       const fromDisplay = censorText(from || "Jugador");
       const contentDisplay = censorText(content || "");
-
       const key = chatNameKey();
       const savedName = key ? localStorage.getItem(key) : null;
       const isSelf = savedName && from === savedName;
-
       const line = document.createElement('div');
       line.className = 'chat-line ' + (isSelf ? 'self' : 'other');
-
       const bubble = document.createElement('div');
       bubble.className = 'bubble';
-
       const nameSpan = document.createElement('span');
       nameSpan.className = 'chat-name';
       nameSpan.style.color = nameColor;
       nameSpan.textContent = `[${time}] ${fromDisplay}: `;
-
       const msgSpan = document.createElement('span');
       msgSpan.className = 'chat-text';
       msgSpan.style.color = '#000';
       msgSpan.textContent = contentDisplay;
-
       bubble.appendChild(nameSpan);
       bubble.appendChild(msgSpan);
       line.appendChild(bubble);
@@ -797,16 +736,12 @@
       if (force === true) chatOpen = true;
       else if (force === false) chatOpen = false;
       else chatOpen = !chatOpen;
-
       panel.classList.toggle('open', chatOpen);
-      document.getElementById('chatToggle')
-        .setAttribute('aria-label', chatOpen ? 'Cerrar chat' : 'Abrir chat');
-
+      document.getElementById('chatToggle').setAttribute('aria-label', chatOpen ? 'Cerrar chat' : 'Abrir chat');
       if (chatOpen) {
-        clearBadge(); // al abrir, se limpia el globito rojo
+        clearBadge();
         setTimeout(() => {
-          const box = document.getElementById('chatBox');
-          if (box) box.scrollTop = box.scrollHeight;
+          document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
           document.getElementById('chatInput')?.focus();
         }, 50);
       }
@@ -815,6 +750,106 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') toggleChat(false);
     });
+
+
+    function celebrarVictoria() {
+        detenerConfeti();
+        const duration = 150 * 1000;
+        const animationEnd = Date.now() + duration;
+        const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 1001 };
+
+        function randomInRange(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        confettiInterval = setInterval(function() {
+            const timeLeft = animationEnd - Date.now();
+            if (timeLeft <= 0) {
+                return clearInterval(confettiInterval);
+            }
+            const particleCount = 50 * (timeLeft / duration);
+            confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+            confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+        }, 250);
+    }
+
+    function efectoDerrota() {
+        const container = document.querySelector('.container');
+        if (container) {
+            container.classList.add('shake-effect');
+            setTimeout(() => container.classList.remove('shake-effect'), 850);
+        }
+    }
+
+    async function verificarEstadoJuego() {
+        if (!partidaId || !jugadorId) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/${partidaId}?jugadorId=${jugadorId}`);
+            if (!response.ok) {
+                clearInterval(pollingInterval);
+                console.error(`HTTP error! status: ${response.status}`);
+                document.getElementById('status').textContent = '❌ Error al conectar con la partida.';
+                return;
+            }
+
+            const data = await response.json();
+            const partida = data.partida || data;
+            if (!partida) return;
+
+            if (partida.juegoTerminado && !juegoTerminado) {
+                juegoTerminado = true;
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+
+                if (partida.ganador === jugadorId) {
+                    document.getElementById('status').textContent = '🏆 ¡GANASTE! Has hundido toda la flota enemiga.';
+                    celebrarVictoria();
+                } else {
+                    document.getElementById('status').textContent = '💀 ¡PERDISTE! Tu flota ha sido completamente destruida.';
+                    efectoDerrota();
+                }
+
+                await cargarTableros();
+                return;
+            }
+
+            if (juegoTerminado) return;
+
+            const soyJugador1 = partida.jugador1Id === jugadorId;
+            const tableroJugador = soyJugador1 ? partida.tableroJugador1 : partida.tableroJugador2;
+            const tableroEnemigo = soyJugador1 ? partida.tableroJugador2 : partida.tableroJugador1;
+            const nuevoJugadorConfirmado = tableroJugador?.confirmado || false;
+            const nuevoEnemigoConfirmado = tableroEnemigo?.confirmado || false;
+            const nuevosAmbosConfirmados = nuevoJugadorConfirmado && nuevoEnemigoConfirmado;
+
+            const huboCambio = ambosConfirmados !== nuevosAmbosConfirmados;
+            if (huboCambio || nuevosAmbosConfirmados) {
+                 await cargarTableros();
+            }
+            ambosConfirmados = nuevosAmbosConfirmados;
+
+            if (!ultimoMensajeAtaque) {
+                if (!partida.jugador2Id) {
+                    document.getElementById('status').textContent = '⏳ Esperando que se una el otro jugador...';
+                } else if (!ambosConfirmados) {
+                    if (!nuevoJugadorConfirmado) {
+                        document.getElementById('status').textContent = '⏳ Esperando que confirmes tu tablero.';
+                    } else {
+                        document.getElementById('status').textContent = '⏳ Esperando que el oponente confirme su tablero.';
+                    }
+                } else {
+                    if (partida.turnoActual === jugadorId) {
+                        document.getElementById('status').textContent = '🎯 ¡Es tu turno! Elige una celda para atacar.';
+                    } else {
+                        document.getElementById('status').textContent = '⏳ Esperando el turno del oponente...';
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Error al verificar estado del juego:', e);
+        }
+    }
 </script>
 
 </body>

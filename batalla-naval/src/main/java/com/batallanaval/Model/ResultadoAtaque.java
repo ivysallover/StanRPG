@@ -1,6 +1,6 @@
 package com.batallanaval.Model;
 
-public enum ResultadoAtaque { //Respuesta Temporal de una accion, Representa el resultado inmediato de un ataque específico
+public enum ResultadoAtaque {
 
 
     AGUA,

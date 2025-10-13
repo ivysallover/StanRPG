@@ -15,7 +15,7 @@ class PartidaTest {
     class Constructor {
 
         @Test
-        void constructor_por_defecto() { //comprueba constructor
+        void constructor_por_defecto() {
             Partida p = new Partida("kkkk");
             assertEquals("kkkk", p.getPartidaId());
             assertNotNull(p.getTableroJugador1());
@@ -33,7 +33,7 @@ class PartidaTest {
     @Nested
     class Tableros {
         @Test
-        void test_get_tablero() { // comprueba que ande bien obtenertablero
+        void test_get_tablero() {
             Partida p = new Partida("kkkk");
             p.setJugador2Id(UUID.randomUUID());
             assertSame(p.getTableroJugador1(), p.getTablero(p.getJugador1Id()));
@@ -41,7 +41,7 @@ class PartidaTest {
         }
 
         @Test
-        void test_get_tablero_oponente() { // comprueba que este bien puesto el tablero oponente y no te traiga el tuyo
+        void test_get_tablero_oponente() {
             Partida p = new Partida("kkkk");
             p.setJugador2Id(UUID.randomUUID());
             assertSame(p.getTableroJugador2(), p.getTableroOponente(p.getJugador1Id()));
@@ -52,7 +52,7 @@ class PartidaTest {
     @Nested
     class Turno {
         @Test
-        void turno_actual() { // verifica turno actual en base al id del juagdor (boludo).
+        void turno_actual() {
             Partida p = new Partida("kkkk");
             p.setJugador2Id(UUID.randomUUID());
             p.setTurnoActual(p.getJugador1Id());
@@ -62,7 +62,7 @@ class PartidaTest {
         }
 
         @Test
-        void es_turno_de() { // si seteo el turno de un jugador que me devuelva un boolean por si es el turno
+        void es_turno_de() {
             Partida q = new Partida("kkk");
             q.setJugador2Id(UUID.randomUUID());
             q.setTurnoActual(q.getJugador2Id());
@@ -118,7 +118,7 @@ class PartidaTest {
         @Test
         void atacar_error_tablero(){
             Partida p = new Partida("p") {
-                @Override//sobreescribo el metodo get tablero oponente para que cuando lo acceda atacar si osi devuelva null
+                @Override
                 public Tablero getTableroOponente(UUID jugadorId) {
                     return null;
                 }
@@ -159,7 +159,7 @@ class PartidaTest {
 
             ResultadoAtaque ultimo = null;
             for (int[] xy : coordenadas) {
-                ultimo = p.atacar(p.getJugador1Id(), xy[0], xy[1]); //xy es el guardado temporal de cada coordenada de barco en coordenadas.
+                ultimo = p.atacar(p.getJugador1Id(), xy[0], xy[1]);
             }
             assertSame(ResultadoAtaque.HUNDIDO, ultimo);
             assertSame(p.getJugador1Id(), p.getTurnoActual());

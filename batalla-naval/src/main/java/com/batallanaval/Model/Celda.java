@@ -19,7 +19,6 @@ public class Celda {
         this.barcoId = barcoId;
     }
 
-    // Getters y setters
     public EstadoCelda getEstado() {
         return estado;
     }

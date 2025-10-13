@@ -13,12 +13,10 @@ public class ChatController {
     private final SimpMessagingTemplate messagingTemplate;
     public ChatController(SimpMessagingTemplate messagingTemplate) { this.messagingTemplate = messagingTemplate; }
 
-    // El cliente envía a: /app/chat/{juegoId}
     @MessageMapping("/chat/{juegoId}")
     public void sendToRoom(@DestinationVariable String juegoId, Chat incoming) {
         if (incoming.getTimestamp() == null) incoming.setTimestamp(Instant.now());
         incoming.setJuegoId(juegoId);
-        // Los suscriptores escuchan en: /topic/chat/{juegoId}
         messagingTemplate.convertAndSend("/topic/chat/" + juegoId, incoming);
     }
 }

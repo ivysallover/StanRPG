@@ -1,6 +1,6 @@
 package com.batallanaval.Model;
 
-public enum EstadoCelda { //Estado Persistente de una celda en el tablero
+public enum EstadoCelda {
     AGUA,
     BARCO,
     AGUA_ATACADA,
