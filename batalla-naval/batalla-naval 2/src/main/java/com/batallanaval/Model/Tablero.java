@@ -27,13 +27,12 @@ public class Tablero {
     private void inicializarTablero() {
         for (int fila = 0; fila < tamano; fila++) {
             for (int col = 0; col < tamano; col++) {
-                grilla[fila][col] = new Celda();
+                grilla[fila][col] = new Celda(); //llena el tablero vacio con celdas (agua) al principio
             }
         }
     }
 
     private void colocarBarcos() {
-        // Colocar diferentes tipos de barcos
         colocarBarco(5); // Portaaviones
         colocarBarco(4); // Acorazado
         colocarBarco(3); // Crucero
@@ -73,18 +72,15 @@ public class Tablero {
     }
 
     private boolean puedeColocarBarco(int fila, int col, int longitud, boolean horizontal) {
-        // Verificar si el barco cabe en el tablero
         if (horizontal && col + longitud > tamano) return false;
         if (!horizontal && fila + longitud > tamano) return false;
 
-        // Verificar si no hay conflictos con otros barcos
         for (int i = 0; i < longitud; i++) {
             int f = horizontal ? fila : fila + i;
             int c = horizontal ? col + i : col;
 
             if (grilla[f][c].getEstado() != EstadoCelda.AGUA) return false;
 
-            // Verificar celdas adyacentes
             for (int df = -1; df <= 1; df++) {
                 for (int dc = -1; dc <= 1; dc++) {
                     int nf = f + df;
@@ -102,7 +98,6 @@ public class Tablero {
 
     public void shuffle() {
         if (!confirmado) {
-            // Limpiar tablero
             for (int fila = 0; fila < tamano; fila++) {
                 for (int col = 0; col < tamano; col++) {
                     grilla[fila][col] = new Celda();
@@ -111,7 +106,6 @@ public class Tablero {
             barcos.clear();
             siguienteBarcoId = 1;
 
-            // Volver a colocar barcos
             colocarBarcos();
         }
     }
@@ -133,7 +127,6 @@ public class Tablero {
         } else if (celda.getEstado() == EstadoCelda.BARCO) {
             celda.setEstado(EstadoCelda.IMPACTO);
 
-            // Verificar si el barco fue hundido
             if (esBarcoHundido(celda.getBarcoId())) {
                 marcarBarcoHundido(celda.getBarcoId());
                 return "HUNDIDO";
@@ -177,7 +170,6 @@ public class Tablero {
         return true;
     }
 
-    // Getters y setters
     public int getTamano() {
         return tamano;
     }
