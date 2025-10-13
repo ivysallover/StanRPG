@@ -102,30 +102,6 @@ public class JuegoService {
             return ResultadoAtaque.JUEGO_NO_INICIADO;
         }
 
-        if (!partida.esTurnoDe(jugadorId)) {
-            return ResultadoAtaque.NO_ES_TU_TURNO;
-        }
-
-        Tablero oponenteTablero = partida.getTableroOponente(jugadorId);
-        if (oponenteTablero == null) {
-            return ResultadoAtaque.ERROR_TABLERO;
-        }
-
-        String resultadoDisparo = oponenteTablero.disparar(fila, col);
-        ResultadoAtaque resultado = ResultadoAtaque.valueOf(resultadoDisparo);
-
-        boolean ataqueExitoso = (resultado == ResultadoAtaque.IMPACTO || resultado == ResultadoAtaque.HUNDIDO);
-        partida.setUltimoAtaqueExitoso(ataqueExitoso);
-
-        if (resultado != ResultadoAtaque.YA_ATACADA) {
-            partida.cambiarTurno();
-        }
-
-        if (oponenteTablero.todosLasBarcosHundidos()) {
-            partida.setJuegoTerminado(true);
-            partida.setGanador(jugadorId.toString());
-        }
-
-        return resultado;
+        return partida.atacar(jugadorId, fila, col);
     }
 }
