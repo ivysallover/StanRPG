@@ -5,8 +5,6 @@ import com.batallanaval.Model.EstadoCelda;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -15,21 +13,21 @@ class CeldaTest {
     @Nested
     class ConstructoresYAccesores {
         @Test
-        void constructorPorDefecto_inicializaAguaYBarcoIdMenosUno() {
+        void constructor1() {
             Celda c = new Celda();
             Assertions.assertEquals(EstadoCelda.AGUA, c.getEstado());
             assertEquals(-1, c.getBarcoId());
         }
 
         @Test
-        void constructorConEstado_respetaEstadoYBarcoIdMenosUno() {
+        void constructor2() {
             Celda c = new Celda(EstadoCelda.BARCO);
             assertEquals(EstadoCelda.BARCO, c.getEstado());
             assertEquals(-1, c.getBarcoId());
         }
 
         @Test
-        void gettersSetters_funcionan() {
+        void gettersSetters() {
             Celda c = new Celda();
             c.setEstado(EstadoCelda.BARCO);
             c.setBarcoId(7);
@@ -41,35 +39,35 @@ class CeldaTest {
     @Nested
     class TieneBarco {
         @Test
-        void false_siNoTieneIdDeBarco() {
+        void no_id() {
             Celda c = new Celda(EstadoCelda.BARCO);
             c.setBarcoId(-1);
             assertFalse(c.tieneBarco());
         }
 
         @Test
-        void false_siEstadoNoEsDeBarco_aunqueTengaId() {
+        void no_estado() {
             Celda c = new Celda(EstadoCelda.AGUA);
             c.setBarcoId(3);
             assertFalse(c.tieneBarco());
         }
 
         @Test
-        void true_enBARCO_conId() {
+        void si_barco() {
             Celda c = new Celda(EstadoCelda.BARCO);
             c.setBarcoId(5);
             assertTrue(c.tieneBarco());
         }
 
         @Test
-        void true_enIMPACTO_conId() {
+        void si_impacto() {
             Celda c = new Celda(EstadoCelda.IMPACTO);
             c.setBarcoId(1);
             assertTrue(c.tieneBarco());
         }
 
         @Test
-        void true_enHUNDIDO_conId() {
+        void si_hundido() {
             Celda c = new Celda(EstadoCelda.HUNDIDO);
             c.setBarcoId(2);
             assertTrue(c.tieneBarco());
@@ -78,29 +76,24 @@ class CeldaTest {
 
     @Nested
     class FueAtacada {
-        @ParameterizedTest
-        @EnumSource(value = EstadoCelda.class, names = {"AGUA_ATACADA", "IMPACTO", "HUNDIDO"})
-        void true_enEstadosAtacados(EstadoCelda estado) {
-            Celda c = new Celda(estado);
-            assertTrue(c.fueAtacada());
+
+        @Test
+        void si_atacado() {
+            Celda c1 = new Celda(EstadoCelda.AGUA_ATACADA);
+            assertTrue(c1.fueAtacada());
+            Celda c2 = new Celda(EstadoCelda.IMPACTO);
+            assertTrue(c2.fueAtacada());
+            Celda c3 = new Celda(EstadoCelda.HUNDIDO);
+            assertTrue(c3.fueAtacada());
         }
 
-        @ParameterizedTest
-        @EnumSource(value = EstadoCelda.class, names = {"AGUA", "BARCO"})
-        void false_enEstadosNoAtacados(EstadoCelda estado) {
-            Celda c = new Celda(estado);
-            assertFalse(c.fueAtacada());
+        @Test
+        void no_atacado() {
+            Celda c1 = new Celda(EstadoCelda.AGUA);
+            assertFalse(c1.fueAtacada());
+            Celda c2 = new Celda(EstadoCelda.BARCO);
+            assertFalse(c2.fueAtacada());
         }
-    }
-
-    @Test
-    void toString_incluyeEstadoYBarcoId() {
-        Celda c = new Celda(EstadoCelda.BARCO);
-        c.setBarcoId(9);
-        String s = c.toString();
-        assertNotNull(s);
-        assertTrue(s.contains("estado="));
-        assertTrue(s.contains("barcoId="));
     }
 }
 

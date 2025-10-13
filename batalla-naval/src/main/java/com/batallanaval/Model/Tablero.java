@@ -27,7 +27,7 @@ public class Tablero {
     private void inicializarTablero() {
         for (int fila = 0; fila < tamano; fila++) {
             for (int col = 0; col < tamano; col++) {
-                grilla[fila][col] = new Celda();
+                grilla[fila][col] = new Celda(); //llena el tablero vacio con celdas (agua) al principio
             }
         }
     }

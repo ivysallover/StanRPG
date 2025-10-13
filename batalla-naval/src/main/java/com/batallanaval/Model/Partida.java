@@ -41,13 +41,13 @@ public class Partida {
         ResultadoAtaque resultado = ResultadoAtaque.valueOf(resultadoDisparo);
 
         boolean ataqueExitoso = (resultado == ResultadoAtaque.IMPACTO || resultado == ResultadoAtaque.HUNDIDO);
-        this.setUltimoAtaqueExitoso(ataqueExitoso);
+        this.setUltimoAtaqueExitoso(ataqueExitoso); // guarda true o false en ataque exitoso para ver si cambia el turno
 
         if (resultado != ResultadoAtaque.YA_ATACADA) {
-            this.cambiarTurno();
+            this.cambiarTurno(); // a menos que sea una celda que ya fue atacada, que entre a cambiar turno.
         }
 
-        if (oponenteTablero.todosLasBarcosHundidos()) {
+        if (oponenteTablero.todosLasBarcosHundidos()) { //si ganaste papu
             this.setJuegoTerminado(true);
             this.setGanador(jugadorId.toString());
         }
@@ -55,13 +55,13 @@ public class Partida {
         return resultado;
     }
 
-    public void cambiarTurno() {
+    public void cambiarTurno() { //cambia el turno propiamente dicho
         if (ultimoAtaqueExitoso) {
             this.ultimoAtaqueExitoso = false;
             return;
         }
         if (jugador2Id == null || turnoActual == null) return;
-        turnoActual = turnoActual.equals(jugador1Id) ? jugador2Id : jugador1Id;
+        turnoActual = turnoActual.equals(jugador1Id) ? jugador2Id : jugador1Id; //es una forma de escribir if
     }
 
     public boolean esTurnoDe(UUID jugadorId) {
