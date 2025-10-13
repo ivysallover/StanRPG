@@ -2,7 +2,7 @@ package com.batallanaval.Model;
 
 public class Celda {
     private EstadoCelda estado;
-    private int barcoId; // ID del barco al que pertenece esta celda (-1 si no hay barco)
+    private int barcoId;
 
     public Celda() {
         this.estado = EstadoCelda.AGUA;
