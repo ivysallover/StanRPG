@@ -193,31 +193,5 @@ public class Tablero {
         return grilla;
     }
 
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        for (int fila = 0; fila < tamano; fila++) {
-            for (int col = 0; col < tamano; col++) {
-                switch (grilla[fila][col].getEstado()) {
-                    case AGUA:
-                        sb.append("~ ");
-                        break;
-                    case BARCO:
-                        sb.append("B ");
-                        break;
-                    case AGUA_ATACADA:
-                        sb.append("O ");
-                        break;
-                    case IMPACTO:
-                        sb.append("X ");
-                        break;
-                    case HUNDIDO:
-                        sb.append("# ");
-                        break;
-                }
-            }
-            sb.append("\n");
-        }
-        return sb.toString();
-    }
+
 }

@@ -43,11 +43,5 @@ public class Celda {
         return estado == EstadoCelda.AGUA_ATACADA || estado == EstadoCelda.IMPACTO || estado == EstadoCelda.HUNDIDO;
     }
 
-    @Override
-    public String toString() {
-        return "Celda{" +
-                "estado=" + estado +
-                ", barcoId=" + barcoId +
-                '}';
-    }
+
 }
