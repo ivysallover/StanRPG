@@ -27,17 +27,17 @@ public class Tablero {
     private void inicializarTablero() {
         for (int fila = 0; fila < tamano; fila++) {
             for (int col = 0; col < tamano; col++) {
-                grilla[fila][col] = new Celda(); //llena el tablero vacio con celdas (agua) al principio
+                grilla[fila][col] = new Celda();
             }
         }
     }
 
     private void colocarBarcos() {
-        colocarBarco(5); // Portaaviones
-        colocarBarco(4); // Acorazado
-        colocarBarco(3); // Crucero
-        colocarBarco(3); // Submarino
-        colocarBarco(2); // Destructor
+        colocarBarco(5);
+        colocarBarco(4);
+        colocarBarco(3);
+        colocarBarco(3);
+        colocarBarco(2);
     }
 
     private void colocarBarco(int longitud) {
